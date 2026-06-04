@@ -1,0 +1,563 @@
+' =====================================================================
+' CarbonLedger - Diagramas UML em PlantUML
+' Autor: Patrício Alves
+' Projeto: CarbonLedger - ImpactLedger Web3
+'
+' Finalidade:
+' Este arquivo contém diagramas de casos de uso, atividades e blocos
+' para documentar o fluxo funcional e a arquitetura da aplicação.
+'
+' Como usar:
+' 1. Salvar este conteúdo como docs/uml/CarbonLedger_UML.puml
+' 2. Abrir no VS Code com a extensão PlantUML
+' 3. Exportar como PNG, SVG ou PDF
+'
+' Observação:
+' Os nomes seguem a arquitetura atualizada do projeto, com separação entre:
+' - registros;
+' - ativos digitais;
+' - regras de negócio;
+' - tesouraria;
+' - staking;
+' - governança;
+' - oráculo.
+' =====================================================================
+
+
+' =====================================================================
+' DIAGRAMA 1 - CASOS DE USO GERAL DO CARBONLEDGER
+' =====================================================================
+
+@startuml CasosDeUso_Geral_CarbonLedger
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam actorStyle awesome
+
+title CarbonLedger - Diagrama Geral de Casos de Uso
+
+actor "Proponente\nEmpresa, ONG ou Instituição" as Proponente
+actor "Validador" as Validador
+actor "Comprador\nEmpresa emissora" as Comprador
+actor "Administrador\nou Governança" as Admin
+actor "Auditor Público" as Auditor
+actor "Oráculo\nChainlink" as Oraculo
+
+rectangle "CarbonLedger" {
+    usecase "Cadastrar organização" as UC1
+    usecase "Submeter projeto ambiental" as UC2
+    usecase "Anexar evidências\nURI IPFS" as UC3
+    usecase "Iniciar votação" as UC4
+    usecase "Votar no projeto" as UC5
+    usecase "Encerrar votação" as UC6
+    usecase "Emitir créditos\nERC-1155" as UC7
+    usecase "Criar oferta\nno marketplace" as UC8
+    usecase "Comprar créditos" as UC9
+    usecase "Aposentar créditos" as UC10
+    usecase "Emitir certificado\nNFT ERC-721" as UC11
+    usecase "Consultar projetos, créditos,\nvotos e certificados" as UC12
+    usecase "Gerenciar parâmetros\ndo protocolo" as UC13
+    usecase "Realizar staking\nde TIC" as UC14
+    usecase "Votar na DAO" as UC15
+    usecase "Consultar preço ETH/USD" as UC16
+    usecase "Receber taxas\ne reservas" as UC17
+}
+
+Proponente --> UC1
+Proponente --> UC2
+Proponente --> UC3
+Proponente --> UC8
+
+Validador --> UC1
+Validador --> UC4
+Validador --> UC5
+Validador --> UC6
+Validador --> UC15
+
+Comprador --> UC1
+Comprador --> UC9
+Comprador --> UC10
+Comprador --> UC14
+Comprador --> UC15
+
+Admin --> UC13
+Admin --> UC17
+
+Auditor --> UC12
+
+Oraculo --> UC16
+
+UC2 ..> UC3 : <<include>>
+UC6 ..> UC7 : <<extend>>\nse aprovado
+UC10 ..> UC11 : <<include>>
+UC14 ..> UC16 : <<include>>
+UC9 ..> UC17 : <<include>>\ntaxa do protocolo
+
+@enduml
+
+
+' =====================================================================
+' DIAGRAMA 2 - ATIVIDADE: CADASTRO, VALIDAÇÃO E EMISSÃO DE CRÉDITOS
+' =====================================================================
+
+@startuml Atividade_Cadastro_Validacao_Emissao
+skinparam shadowing false
+
+title CarbonLedger - Atividade: Cadastro, Validação e Emissão de Créditos
+
+start
+
+partition "Proponente" {
+    :Preencher dados do projeto;
+    :Informar tipo do projeto;
+    :Informar localização e período de referência;
+    :Informar créditos solicitados;
+    :Enviar evidências para IPFS;
+    :Receber uriEvidencias;
+}
+
+partition "RegistroProjetosCarbono" {
+    :Gerar hashProjeto com keccak256;
+    if (Projeto já cadastrado?) then (Sim)
+        :Rejeitar cadastro;
+        stop
+    else (Não)
+        :Registrar projeto como Submetido;
+    endif
+}
+
+partition "ValidacaoProjetos" {
+    :Iniciar votação;
+    :Alterar estado para EmVotacao;
+}
+
+partition "Validadores" {
+    repeat
+        :Analisar projeto e evidências;
+        :Votar Aprovar ou Rejeitar;
+        if (Voto de aprovação?) then (Sim)
+            :Sugerir quantidade de créditos;
+        else (Não)
+            :Registrar rejeição;
+        endif
+    repeat while (Prazo de votação aberto?) is (Sim)
+}
+
+partition "ValidacaoProjetos" {
+    :Encerrar votação;
+    :Calcular total de votos;
+    :Verificar quórum mínimo;
+    if (Quórum atingido e maioria aprova?) then (Sim)
+        :Calcular créditos aprovados;
+        :Registrar projeto como Aprovado;
+    else (Não)
+        :Registrar projeto como Rejeitado;
+        :Gravar dataUltimaRejeicao;
+        stop
+    endif
+}
+
+partition "CreditoCarbonoToken" {
+    :Emitir lote ERC-1155;
+    :Associar idLote ao idProjeto;
+    :Enviar créditos ao proponente;
+}
+
+partition "RegistroProjetosCarbono" {
+    :Alterar estado para Emitido;
+}
+
+stop
+@enduml
+
+
+' =====================================================================
+' DIAGRAMA 3 - ATIVIDADE: VENDA, COMPRA E APOSENTADORIA DE CRÉDITOS
+' =====================================================================
+
+@startuml Atividade_Mercado_Aposentadoria
+skinparam shadowing false
+
+title CarbonLedger - Atividade: Venda, Compra e Aposentadoria de Créditos
+
+start
+
+partition "Proponente" {
+    :Possuir créditos ERC-1155 emitidos;
+    :Autorizar MercadoCarbono no ERC-1155\nsetApprovalForAll;
+    :Criar oferta de venda;
+}
+
+partition "MercadoCarbono" {
+    :Registrar oferta;
+    :Definir idLote, quantidade e preço;
+    :Disponibilizar oferta ao mercado;
+}
+
+partition "Comprador" {
+    :Consultar ofertas disponíveis;
+    :Selecionar quantidade de créditos;
+    :Enviar pagamento;
+}
+
+partition "MercadoCarbono" {
+    :Validar oferta;
+    :Validar pagamento;
+    :Calcular valor do vendedor;
+    :Calcular taxa do protocolo;
+}
+
+partition "TesourariaCarbono" {
+    :Receber taxa do marketplace;
+}
+
+partition "MercadoCarbono" {
+    :Transferir pagamento líquido ao vendedor;
+    :Transferir créditos ERC-1155 ao comprador;
+    :Atualizar quantidade disponível da oferta;
+}
+
+partition "Comprador" {
+    if (Deseja compensar emissões agora?) then (Sim)
+        :Solicitar aposentadoria dos créditos;
+    else (Não)
+        :Manter créditos na carteira;
+        stop
+    endif
+}
+
+partition "RegistroAposentadorias" {
+    :Registrar pedido de aposentadoria;
+    :Chamar queima no CreditoCarbonoToken;
+}
+
+partition "CreditoCarbonoToken" {
+    :Queimar créditos do comprador;
+    :Atualizar quantidadeAposentada do lote;
+}
+
+partition "CertificadoCompensacaoNFT" {
+    :Emitir certificado NFT ERC-721;
+    :Enviar certificado ao comprador;
+}
+
+partition "RegistroAposentadorias" {
+    :Registrar idCertificado;
+    :Atualizar totalCompensadoPorComprador;
+}
+
+stop
+@enduml
+
+
+' =====================================================================
+' DIAGRAMA 4 - BLOCOS: ARQUITETURA MODULAR DOS CONTRATOS
+' =====================================================================
+
+@startuml Blocos_Arquitetura_Modular
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+title CarbonLedger - Diagrama de Blocos da Arquitetura Modular
+
+package "Interface e Integração" {
+    [Frontend Web3] as Frontend
+    [Scripts Ethers.js] as Scripts
+    [Metamask] as Metamask
+}
+
+package "Camada de Registros" {
+    [RegistroOrganizacoes] as RegistroOrganizacoes
+    [RegistroProjetosCarbono] as RegistroProjetos
+}
+
+package "Camada de Validação" {
+    [ValidacaoProjetos] as Validacao
+}
+
+package "Camada de Ativos Digitais" {
+    [TokenImpactoCarbono\nERC-20 TIC] as TokenTIC
+    [CreditoCarbonoToken\nERC-1155] as CreditoToken
+    [CertificadoCompensacaoNFT\nERC-721] as CertificadoNFT
+}
+
+package "Camada de Mercado e Negócio" {
+    [MercadoCarbono] as Mercado
+    [RegistroAposentadorias] as Aposentadorias
+}
+
+package "Camada Financeira" {
+    [TesourariaCarbono] as Tesouraria
+}
+
+package "Camada de Incentivos" {
+    [StakingCarbono] as Staking
+}
+
+package "Camada de Governança" {
+    [GovernancaCarbono] as Governanca
+}
+
+package "Dados Externos" {
+    [AdaptadorOraculoChainlink] as Oraculo
+    database "Chainlink ETH/USD" as Feed
+    cloud "IPFS\nEvidências e metadados" as IPFS
+}
+
+Frontend --> Metamask
+Frontend --> RegistroOrganizacoes
+Frontend --> RegistroProjetos
+Frontend --> Validacao
+Frontend --> Mercado
+Frontend --> Aposentadorias
+Frontend --> Staking
+Frontend --> Governanca
+
+Scripts --> RegistroOrganizacoes
+Scripts --> RegistroProjetos
+Scripts --> CreditoToken
+Scripts --> CertificadoNFT
+Scripts --> Mercado
+Scripts --> Tesouraria
+Scripts --> Staking
+Scripts --> Governanca
+
+RegistroProjetos --> RegistroOrganizacoes : verifica proponente
+Validacao --> RegistroOrganizacoes : verifica validador
+Validacao --> RegistroProjetos : atualiza resultado
+CreditoToken --> RegistroProjetos : consulta projeto aprovado
+Mercado --> CreditoToken : transfere créditos
+Mercado --> Tesouraria : envia taxas
+Aposentadorias --> CreditoToken : queima créditos
+Aposentadorias --> CertificadoNFT : emite certificado
+Staking --> TokenTIC : recebe stake e paga recompensa
+Staking --> Oraculo : consulta preço
+Governanca --> RegistroOrganizacoes : gerencia validadores
+Governanca --> Validacao : altera prazos e quórum
+Governanca --> Mercado : altera taxa
+Governanca --> Tesouraria : autoriza uso de reservas
+Oraculo --> Feed : lê preço ETH/USD
+RegistroProjetos --> IPFS : uriEvidencias
+CertificadoNFT --> IPFS : uriCertificado
+
+@enduml
+
+
+' =====================================================================
+' DIAGRAMA 5 - BLOCOS: SEPARAÇÃO ENTRE REGISTROS, TESOURARIA E NEGÓCIO
+' =====================================================================
+
+@startuml Blocos_Separacao_Responsabilidades
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+title CarbonLedger - Separação entre Registros, Tesouraria e Regras de Negócio
+
+rectangle "Registros\nDados e Estados" as Registros {
+    [RegistroOrganizacoes]
+    [RegistroProjetosCarbono]
+}
+
+rectangle "Ativos Digitais\nTokens e Certificados" as Ativos {
+    [TokenImpactoCarbono\nERC-20]
+    [CreditoCarbonoToken\nERC-1155]
+    [CertificadoCompensacaoNFT\nERC-721]
+}
+
+rectangle "Regras de Negócio\nFluxos Operacionais" as Negocio {
+    [ValidacaoProjetos]
+    [MercadoCarbono]
+    [RegistroAposentadorias]
+    [StakingCarbono]
+    [GovernancaCarbono]
+}
+
+rectangle "Tesouraria\nCaixa do Protocolo" as Caixa {
+    [TesourariaCarbono]
+}
+
+rectangle "Dados Externos" as Externos {
+    [AdaptadorOraculoChainlink]
+    [IPFS]
+}
+
+Negocio --> Registros : consulta e altera estados
+Negocio --> Ativos : emite, transfere, queima e certifica
+Negocio --> Caixa : envia taxas e solicita pagamentos
+Negocio --> Externos : consulta preço e evidências
+Caixa --> Ativos : guarda TIC e repassa recompensas
+Registros --> Externos : guarda URI de evidências
+
+@enduml
+
+
+' =====================================================================
+' DIAGRAMA 6 - CASOS DE USO: GOVERNANÇA E STAKING
+' =====================================================================
+
+@startuml CasosDeUso_Governanca_Staking
+left to right direction
+skinparam shadowing false
+skinparam actorStyle awesome
+
+title CarbonLedger - Casos de Uso de Governança e Staking
+
+actor "Usuário com TIC" as Usuario
+actor "Staker" as Staker
+actor "Participante da DAO" as DaoUser
+actor "Governança" as DAO
+actor "Oráculo Chainlink" as Oraculo
+
+rectangle "Módulo de Staking" {
+    usecase "Aprovar gasto de TIC" as ST1
+    usecase "Depositar TIC em staking" as ST2
+    usecase "Consultar saldo em staking" as ST3
+    usecase "Calcular recompensa" as ST4
+    usecase "Resgatar stake" as ST5
+    usecase "Receber recompensa" as ST6
+}
+
+rectangle "Módulo de Governança" {
+    usecase "Criar proposta" as GOV1
+    usecase "Votar proposta" as GOV2
+    usecase "Encerrar votação" as GOV3
+    usecase "Executar proposta aprovada" as GOV4
+    usecase "Alterar parâmetros do protocolo" as GOV5
+}
+
+rectangle "Módulo de Oráculo" {
+    usecase "Consultar preço ETH/USD" as OR1
+}
+
+Usuario --> ST1
+Staker --> ST2
+Staker --> ST3
+Staker --> ST5
+Staker --> ST6
+DaoUser --> GOV1
+DaoUser --> GOV2
+DAO --> GOV3
+DAO --> GOV4
+GOV4 --> GOV5
+ST4 --> OR1 : <<include>>
+Oraculo --> OR1
+ST2 ..> ST1 : <<include>>
+ST6 ..> ST4 : <<include>>
+
+@enduml
+
+
+' =====================================================================
+' DIAGRAMA 7 - ATIVIDADE: GOVERNANÇA DAO SIMPLIFICADA
+' =====================================================================
+
+@startuml Atividade_Governanca_DAO
+skinparam shadowing false
+
+title CarbonLedger - Atividade: Governança DAO Simplificada
+
+start
+
+partition "Participante" {
+    :Possuir tokens TIC;
+    :Criar proposta;
+    :Informar tipo da proposta;
+    :Informar parâmetro e novo valor;
+}
+
+partition "GovernancaCarbono" {
+    :Registrar proposta;
+    :Definir início e fim da votação;
+}
+
+partition "Participantes da DAO" {
+    repeat
+        :Analisar proposta;
+        :Votar a favor ou contra;
+    repeat while (Prazo de votação aberto?) is (Sim)
+}
+
+partition "GovernancaCarbono" {
+    :Encerrar votação;
+    :Verificar quórum;
+    if (Maioria aprovou?) then (Sim)
+        :Marcar proposta como aprovada;
+        :Executar alteração;
+    else (Não)
+        :Marcar proposta como rejeitada;
+        stop
+    endif
+}
+
+partition "Contratos do Protocolo" {
+    :Aplicar novo parâmetro;
+    note right
+        Exemplos:
+        - alterar taxa do marketplace
+        - alterar prazo de votação
+        - alterar quórum mínimo
+        - autorizar validador
+        - autorizar saque da tesouraria
+    end note
+}
+
+stop
+@enduml
+
+
+' =====================================================================
+' DIAGRAMA 8 - ATIVIDADE: STAKING COM ORÁCULO
+' =====================================================================
+
+@startuml Atividade_Staking_Oraculo
+skinparam shadowing false
+
+title CarbonLedger - Atividade: Staking com Recompensa e Oráculo
+
+start
+
+partition "Staker" {
+    :Possuir TokenImpactoCarbono TIC;
+    :Aprovar StakingCarbono para movimentar TIC;
+    :Solicitar stake;
+}
+
+partition "StakingCarbono" {
+    :Transferir TIC do usuário para o contrato;
+    :Registrar quantidade em stake;
+    :Registrar timestamp inicial;
+}
+
+partition "Staker" {
+    :Aguardar período de recompensa;
+    :Solicitar resgate ou recompensa;
+}
+
+partition "AdaptadorOraculoChainlink" {
+    :Consultar preço ETH/USD;
+    :Retornar preço atualizado;
+}
+
+partition "StakingCarbono" {
+    :Calcular tempo em stake;
+    :Calcular recompensa base;
+    :Ajustar recompensa com dado do oráculo;
+    if (Tesouraria possui saldo suficiente?) then (Sim)
+        :Solicitar pagamento pela tesouraria;
+    else (Não)
+        :Reverter ou limitar recompensa;
+        stop
+    endif
+}
+
+partition "TesourariaCarbono" {
+    :Transferir recompensa em TIC;
+}
+
+partition "Staker" {
+    :Receber recompensa;
+    :Receber tokens em stake se houver resgate;
+}
+
+stop
+@enduml

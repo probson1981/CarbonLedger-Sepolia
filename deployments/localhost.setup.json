@@ -1,0 +1,100 @@
+{
+  "projeto": "CarbonLedger",
+  "rede": "localhost",
+  "chainId": "31337",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "deployOrigem": {
+    "dataDeploy": "2026-06-04T15:34:24.695Z",
+    "geradoEm": null
+  },
+  "configuradoEm": "2026-06-04T15:35:49.277Z",
+  "modo": "Fase A - setup tolerante a contratos ainda não implantados",
+  "autorizacoes": {
+    "ValidacaoProjetos_em_RegistroProjetosCarbono": true,
+    "CreditoCarbonoToken_em_RegistroProjetosCarbono": true,
+    "RegistroAposentadorias_em_CreditoCarbonoToken": true,
+    "RegistroAposentadorias_em_CertificadoCompensacaoNFT": true,
+    "StakingCarbono_em_TesourariaCarbono": true
+  },
+  "resultadosIntermediarios": {
+    "ValidacaoProjetos_em_RegistroProjetosCarbono": true,
+    "CreditoCarbonoToken_em_RegistroProjetosCarbono": true,
+    "RegistroAposentadorias_em_CreditoCarbonoToken": true,
+    "RegistroAposentadorias_em_CertificadoCompensacaoNFT": true,
+    "StakingCarbono_em_TesourariaCarbono": true
+  },
+  "stakingValidacao": {
+    "enderecoStaking": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+    "exigirStakeMinimo": true,
+    "stakeMinimoValidador": "1000000000000000000000"
+  },
+  "tesouraria": {
+    "saldoTIC": "100000000000000000000000",
+    "saldoTICFormatado": "100000.0"
+  },
+  "etapas": [
+    {
+      "etapa": "RegistroProjetosCarbono.autorizarContrato(ValidacaoProjetos, true)",
+      "status": "executada",
+      "txHash": "0xfb40fe230e8cc6b64e715a5f0aa3bf5a4f07cd0a6b7f715a66504eb90c48b7e6",
+      "bloco": 19
+    },
+    {
+      "etapa": "RegistroProjetosCarbono.autorizarContrato(CreditoCarbonoToken, true)",
+      "status": "executada",
+      "txHash": "0x98eb64b517df8632cdb20844099c110305832e02f856f99fdc016366bef776e0",
+      "bloco": 20
+    },
+    {
+      "etapa": "CreditoCarbonoToken.autorizarContrato(RegistroAposentadorias, true)",
+      "status": "executada",
+      "txHash": "0xc1e00c9dac2b0c34526bef8566b17288c64126c49491aaac0a76a830e4ec4c79",
+      "bloco": 21
+    },
+    {
+      "etapa": "CertificadoCompensacaoNFT.autorizarContrato(RegistroAposentadorias, true)",
+      "status": "executada",
+      "txHash": "0xeee2849097dcc1720694cb1118d4c95a92399e2c4a4b3c56ff46dd9ba733b8bc",
+      "bloco": 22
+    },
+    {
+      "etapa": "TesourariaCarbono.autorizarContrato(StakingCarbono, true)",
+      "status": "executada",
+      "txHash": "0x51094c6f40d1ddf95d8a270bf444ffdd47a343fefa11425d6d8ac63d4c8c6499",
+      "bloco": 23
+    },
+    {
+      "etapa": "ValidacaoProjetos.configurarStakeValidador(StakingCarbono, true, 1000 TIC)",
+      "status": "executada",
+      "txHash": "0x8521e3a1af7d92e8c7d3c8fdeefd95afeda7ac5ec6aabe028939bd2c93559977",
+      "bloco": 24
+    },
+    {
+      "etapa": "TokenImpactoCarbono.approve(TesourariaCarbono, 100000 TIC)",
+      "status": "executada",
+      "txHash": "0xf4e18a7d0015f0124d97f19b2a4de59eeb117474024658294fb3d722efcaf022",
+      "bloco": 25
+    },
+    {
+      "etapa": "TesourariaCarbono.depositarTIC(100000 TIC)",
+      "status": "executada",
+      "txHash": "0x6e92179b93306f77f4c301f07ffa0123918bfef5e6102f58f99b449769662405",
+      "bloco": 26
+    }
+  ],
+  "contratos": {
+    "TokenImpactoCarbono": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "CreditoCarbonoToken": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "CertificadoCompensacaoNFT": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+    "RegistroOrganizacoes": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+    "TesourariaCarbono": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+    "RegistroProjetosCarbono": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+    "ValidacaoProjetos": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+    "MercadoCarbono": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+    "RegistroAposentadorias": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+    "StakingCarbono": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+    "GovernancaCarbono": "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
+    "MockPriceFeedChainlink": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
+    "AdaptadorOraculoChainlink": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0"
+  }
+}
