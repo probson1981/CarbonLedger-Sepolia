@@ -4,10 +4,10 @@
   "chainId": "31337",
   "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "deployOrigem": {
-    "dataDeploy": "2026-06-05T12:49:43.000Z",
+    "dataDeploy": "2026-06-05T22:38:12.352Z",
     "geradoEm": null
   },
-  "configuradoEm": "2026-06-05T13:01:41.381Z",
+  "configuradoEm": "2026-06-05T22:38:57.314Z",
   "modo": "MVP - validação simplificada sem staking obrigatório",
   "autorizacoes": {
     "ValidacaoProjetos_em_RegistroProjetosCarbono": true,
@@ -39,33 +39,39 @@
   "etapas": [
     {
       "etapa": "RegistroProjetosCarbono.autorizarContrato(ValidacaoProjetos, true)",
-      "status": "ja_configurada",
-      "motivo": "ValidacaoProjetos já estava autorizado em RegistroProjetosCarbono."
+      "status": "executada",
+      "txHash": "0x1b130e351e9c8b4c207d06cad71c3dfa6ae92f0addc7ee7179979d95188ca5b4",
+      "bloco": 19
     },
     {
       "etapa": "RegistroProjetosCarbono.autorizarContrato(CreditoCarbonoToken, true)",
-      "status": "ja_configurada",
-      "motivo": "CreditoCarbonoToken já estava autorizado em RegistroProjetosCarbono."
+      "status": "executada",
+      "txHash": "0xb54074e100343730530e17934a97ed7ccabb1acb26aa8386582d699462e69b76",
+      "bloco": 20
     },
     {
       "etapa": "CreditoCarbonoToken.autorizarContrato(RegistroAposentadorias, true)",
-      "status": "ja_configurada",
-      "motivo": "RegistroAposentadorias já estava autorizado em CreditoCarbonoToken."
+      "status": "executada",
+      "txHash": "0x29c35408049afb25ffa0ec08fe010020f2ea9e169912e4d19c04a5512e60f5cd",
+      "bloco": 21
     },
     {
       "etapa": "CertificadoCompensacaoNFT.autorizarContrato(RegistroAposentadorias, true)",
-      "status": "ja_configurada",
-      "motivo": "RegistroAposentadorias já estava autorizado em CertificadoCompensacaoNFT."
+      "status": "executada",
+      "txHash": "0xf94d28463908b49a88a6babbff993a204b11d027df1fa0531ee94cf084016bed",
+      "bloco": 22
     },
     {
       "etapa": "TesourariaCarbono.autorizarContrato(StakingCarbono, true)",
-      "status": "ja_configurada",
-      "motivo": "StakingCarbono já estava autorizado em TesourariaCarbono."
+      "status": "executada",
+      "txHash": "0x68c31cbddfa545a7aba76b46a1d0ee4ea64d43958dd7063aeb5cabd3e1f4b3f0",
+      "bloco": 23
     },
     {
       "etapa": "ValidacaoProjetos.alterarParametrosVotacao(60 segundos, 1 voto)",
-      "status": "ja_configurada",
-      "motivo": "Parâmetros de votação do MVP já estavam configurados."
+      "status": "executada",
+      "txHash": "0xd2a449861dd49bfc89cb23e5e97c863d882d457b9a6321e56c84ea1080547ca1",
+      "bloco": 24
     },
     {
       "etapa": "ValidacaoProjetos.configurarStakeValidador(sem staking para MVP)",
@@ -73,9 +79,16 @@
       "motivo": "Validação MVP já estava configurada sem staking obrigatório."
     },
     {
+      "etapa": "TokenImpactoCarbono.approve(TesourariaCarbono, 100000 TIC)",
+      "status": "executada",
+      "txHash": "0xf474e622c457a2176465182aed8d26d4b730018fea724fea6f4c321c089b9689",
+      "bloco": 25
+    },
+    {
       "etapa": "TesourariaCarbono.depositarTIC(100000 TIC)",
-      "status": "ja_configurada",
-      "motivo": "Tesouraria já possui reserva TIC suficiente."
+      "status": "executada",
+      "txHash": "0xf432a5e0e6d683a046e4d3beae6c45b4ce7b93b513e7e9a06e7c20149ba9dd4f",
+      "bloco": 26
     }
   ],
   "contratos": {

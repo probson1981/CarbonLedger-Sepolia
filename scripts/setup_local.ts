@@ -1,5 +1,7 @@
 /**
  * @file setup_local.ts
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  * @notice Script de configuração local dos contratos do CarbonLedger.
  *

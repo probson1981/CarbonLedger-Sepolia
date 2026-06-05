@@ -1,5 +1,7 @@
 /**
  * @file sync_frontend_deployments.cjs
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  *
  * @notice

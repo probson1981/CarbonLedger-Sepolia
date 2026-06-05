@@ -1,5 +1,7 @@
 /**
  * @file MercadoCarbono.test.ts
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  * @notice Testes automatizados do contrato MercadoCarbono.
  *

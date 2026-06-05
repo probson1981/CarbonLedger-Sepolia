@@ -3,6 +3,8 @@ pragma solidity ^0.8.28;
 
 /**
  * @file CertificadoCompensacaoNFT.sol
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  * @title CertificadoCompensacaoNFT
  *

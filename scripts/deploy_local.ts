@@ -1,5 +1,7 @@
 /**
  * @file deploy_local.ts
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  *
  * @notice
@@ -133,6 +135,8 @@ async function implantarContrato(
 function gerarArquivoContratosTs(contratos: ContratosDeploy) {
   return `/**
  * @file contratos.ts
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  *
  * @notice
@@ -246,6 +250,8 @@ export function obterEnderecoContrato(
 function gerarArquivoContasLocaisTs(contas: ContasLocais) {
   return `/**
  * @file contasLocais.ts
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  *
  * @notice

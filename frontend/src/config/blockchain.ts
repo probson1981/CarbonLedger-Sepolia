@@ -1,5 +1,7 @@
 /**
  * @file blockchain.ts
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  *
  * @notice

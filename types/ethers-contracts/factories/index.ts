@@ -10,7 +10,6 @@ export * as stakingCarbonoSol from './StakingCarbono.sol/index.js';
 export * as validacaoProjetosSol from './ValidacaoProjetos.sol/index.js';
 export * as mocks from './mocks/index.js';
 export { CertificadoCompensacaoNFT__factory } from './CertificadoCompensacaoNFT__factory.js';
-export { Counter__factory } from './Counter__factory.js';
 export { GovernancaCarbono__factory } from './GovernancaCarbono__factory.js';
 export { RegistroOrganizacoes__factory } from './RegistroOrganizacoes__factory.js';
 export { TesourariaCarbono__factory } from './TesourariaCarbono__factory.js';

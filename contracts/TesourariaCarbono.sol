@@ -3,6 +3,8 @@ pragma solidity ^0.8.28;
 
 /**
  * @file TesourariaCarbono.sol
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  * @title TesourariaCarbono
  *

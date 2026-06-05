@@ -1,6 +1,8 @@
 /**
  * @file TokenImpactoCarbono.test.ts
- * @author Patricio Alves
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
+ * @author Patrício Alves
  * @notice Arquivo de testes automatizados do contrato TokenImpactoCarbono.
  *
  * @dev

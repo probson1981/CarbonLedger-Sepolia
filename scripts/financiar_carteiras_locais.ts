@@ -1,5 +1,7 @@
 /**
  * @file financiar_carteiras_locais.ts
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  * @notice Financia carteiras locais já geradas para o CarbonLedger.
  *

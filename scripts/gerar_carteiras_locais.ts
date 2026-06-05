@@ -1,5 +1,7 @@
 /**
  * @file gerar_carteiras_locais.ts
+ * @author Alanio Lima
+ * @author Ednardo Peixoto
  * @author Patrício Alves
  * @notice Script para gerar carteiras locais de teste para o CarbonLedger.
  *
