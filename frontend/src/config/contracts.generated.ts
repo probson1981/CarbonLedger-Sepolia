@@ -11,7 +11,7 @@ export const DEPLOYMENTS = {
     "networkName": "localhost",
     "chainId": "31337",
     "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-    "geradoEm": "2026-06-04T15:34:24.695Z",
+    "geradoEm": "2026-06-05T12:49:43.000Z",
     "contratos": {
       "TokenImpactoCarbono": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
       "CreditoCarbonoToken": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
@@ -2241,6 +2241,34 @@ export const ABIS = {
       "inputs": [
         {
           "internalType": "address",
+          "name": "enderecoRegistroProjetos",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "idProjeto",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "idLote",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "anoReferencia",
+          "type": "uint256"
+        }
+      ],
+      "name": "emitirCreditosDeProjetoAprovado",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "account",
           "type": "address"
         },
@@ -2511,6 +2539,97 @@ export const ABIS = {
           "internalType": "string",
           "name": "",
           "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "IRegistroProjetosCarbonoCredito": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "idProjeto",
+          "type": "uint256"
+        }
+      ],
+      "name": "marcarCreditosEmitidos",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "idProjeto",
+          "type": "uint256"
+        }
+      ],
+      "name": "obterCreditosAprovados",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "idProjeto",
+          "type": "uint256"
+        }
+      ],
+      "name": "obterProponente",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "idProjeto",
+          "type": "uint256"
+        }
+      ],
+      "name": "projetoAprovado",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "idProjeto",
+          "type": "uint256"
+        }
+      ],
+      "name": "projetoEmitido",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",

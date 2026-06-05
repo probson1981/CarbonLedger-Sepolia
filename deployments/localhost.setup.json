@@ -4,11 +4,11 @@
   "chainId": "31337",
   "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "deployOrigem": {
-    "dataDeploy": "2026-06-04T15:34:24.695Z",
+    "dataDeploy": "2026-06-05T12:49:43.000Z",
     "geradoEm": null
   },
-  "configuradoEm": "2026-06-04T15:35:49.277Z",
-  "modo": "Fase A - setup tolerante a contratos ainda não implantados",
+  "configuradoEm": "2026-06-05T13:01:41.381Z",
+  "modo": "MVP - validação simplificada sem staking obrigatório",
   "autorizacoes": {
     "ValidacaoProjetos_em_RegistroProjetosCarbono": true,
     "CreditoCarbonoToken_em_RegistroProjetosCarbono": true,
@@ -23,10 +23,14 @@
     "RegistroAposentadorias_em_CertificadoCompensacaoNFT": true,
     "StakingCarbono_em_TesourariaCarbono": true
   },
+  "parametrosVotacao": {
+    "prazoVotacaoSegundos": "60",
+    "quorumMinimo": "1"
+  },
   "stakingValidacao": {
-    "enderecoStaking": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
-    "exigirStakeMinimo": true,
-    "stakeMinimoValidador": "1000000000000000000000"
+    "enderecoStaking": "0x0000000000000000000000000000000000000000",
+    "exigirStakeMinimo": false,
+    "stakeMinimoValidador": "0"
   },
   "tesouraria": {
     "saldoTIC": "100000000000000000000000",
@@ -35,51 +39,43 @@
   "etapas": [
     {
       "etapa": "RegistroProjetosCarbono.autorizarContrato(ValidacaoProjetos, true)",
-      "status": "executada",
-      "txHash": "0xfb40fe230e8cc6b64e715a5f0aa3bf5a4f07cd0a6b7f715a66504eb90c48b7e6",
-      "bloco": 19
+      "status": "ja_configurada",
+      "motivo": "ValidacaoProjetos já estava autorizado em RegistroProjetosCarbono."
     },
     {
       "etapa": "RegistroProjetosCarbono.autorizarContrato(CreditoCarbonoToken, true)",
-      "status": "executada",
-      "txHash": "0x98eb64b517df8632cdb20844099c110305832e02f856f99fdc016366bef776e0",
-      "bloco": 20
+      "status": "ja_configurada",
+      "motivo": "CreditoCarbonoToken já estava autorizado em RegistroProjetosCarbono."
     },
     {
       "etapa": "CreditoCarbonoToken.autorizarContrato(RegistroAposentadorias, true)",
-      "status": "executada",
-      "txHash": "0xc1e00c9dac2b0c34526bef8566b17288c64126c49491aaac0a76a830e4ec4c79",
-      "bloco": 21
+      "status": "ja_configurada",
+      "motivo": "RegistroAposentadorias já estava autorizado em CreditoCarbonoToken."
     },
     {
       "etapa": "CertificadoCompensacaoNFT.autorizarContrato(RegistroAposentadorias, true)",
-      "status": "executada",
-      "txHash": "0xeee2849097dcc1720694cb1118d4c95a92399e2c4a4b3c56ff46dd9ba733b8bc",
-      "bloco": 22
+      "status": "ja_configurada",
+      "motivo": "RegistroAposentadorias já estava autorizado em CertificadoCompensacaoNFT."
     },
     {
       "etapa": "TesourariaCarbono.autorizarContrato(StakingCarbono, true)",
-      "status": "executada",
-      "txHash": "0x51094c6f40d1ddf95d8a270bf444ffdd47a343fefa11425d6d8ac63d4c8c6499",
-      "bloco": 23
+      "status": "ja_configurada",
+      "motivo": "StakingCarbono já estava autorizado em TesourariaCarbono."
     },
     {
-      "etapa": "ValidacaoProjetos.configurarStakeValidador(StakingCarbono, true, 1000 TIC)",
-      "status": "executada",
-      "txHash": "0x8521e3a1af7d92e8c7d3c8fdeefd95afeda7ac5ec6aabe028939bd2c93559977",
-      "bloco": 24
+      "etapa": "ValidacaoProjetos.alterarParametrosVotacao(60 segundos, 1 voto)",
+      "status": "ja_configurada",
+      "motivo": "Parâmetros de votação do MVP já estavam configurados."
     },
     {
-      "etapa": "TokenImpactoCarbono.approve(TesourariaCarbono, 100000 TIC)",
-      "status": "executada",
-      "txHash": "0xf4e18a7d0015f0124d97f19b2a4de59eeb117474024658294fb3d722efcaf022",
-      "bloco": 25
+      "etapa": "ValidacaoProjetos.configurarStakeValidador(sem staking para MVP)",
+      "status": "ja_configurada",
+      "motivo": "Validação MVP já estava configurada sem staking obrigatório."
     },
     {
       "etapa": "TesourariaCarbono.depositarTIC(100000 TIC)",
-      "status": "executada",
-      "txHash": "0x6e92179b93306f77f4c301f07ffa0123918bfef5e6102f58f99b449769662405",
-      "bloco": 26
+      "status": "ja_configurada",
+      "motivo": "Tesouraria já possui reserva TIC suficiente."
     }
   ],
   "contratos": {

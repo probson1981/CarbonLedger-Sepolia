@@ -28,18 +28,46 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
+ * @dev
+ * Interface mínima do RegistroProjetosCarbono usada pelo contrato de crédito.
+ *
+ * O CreditoCarbonoToken usa esta interface para:
+ *
+ * - confirmar se o projeto foi aprovado;
+ * - verificar se os créditos ainda não foram emitidos;
+ * - obter o proponente que receberá os créditos;
+ * - obter a quantidade de créditos aprovados;
+ * - marcar o projeto como emitido após o mint.
+ */
+interface IRegistroProjetosCarbonoCredito {
+    function obterProponente(uint256 idProjeto) external view returns (address);
+
+    function obterCreditosAprovados(
+        uint256 idProjeto
+    ) external view returns (uint256);
+
+    function projetoAprovado(uint256 idProjeto) external view returns (bool);
+
+    function projetoEmitido(uint256 idProjeto) external view returns (bool);
+
+    function marcarCreditosEmitidos(uint256 idProjeto) external;
+}
+
+/**
  * @title CreditoCarbonoToken
  *
  * @notice
  * Contrato ERC-1155 para emissão e queima de créditos de carbono tokenizados.
  *
  * @dev
- * Este contrato será usado pelo CarbonLedger para representar créditos
- * ambientais aprovados por validação.
+ * Este contrato representa os créditos ambientais aprovados por validação.
  *
- * Em uma versão final, a emissão será chamada pelo contrato responsável
- * pela aprovação dos projetos. Nesta etapa inicial, a emissão fica restrita
- * ao dono do contrato para facilitar testes e implantação do MVP.
+ * Para o MVP, existem duas formas de emissão:
+ *
+ * 1. `emitirCreditos`: emissão manual pelo owner, útil para testes.
+ *
+ * 2. `emitirCreditosDeProjetoAprovado`: emissão vinculada ao
+ *    RegistroProjetosCarbono, usando os dados reais do projeto aprovado.
  */
 contract CreditoCarbonoToken is ERC1155, Ownable {
     /**
@@ -167,10 +195,15 @@ contract CreditoCarbonoToken is ERC1155, Ownable {
 
     /**
      * @notice
-     * Emite um novo lote de créditos de carbono.
+     * Emite um novo lote de créditos de carbono manualmente.
      *
      * @dev
-     * Nesta versão inicial, apenas o dono do contrato pode emitir créditos.
+     * Esta função foi mantida para testes e operações administrativas.
+     * Ela não altera o estado do projeto no RegistroProjetosCarbono.
+     *
+     * Para o fluxo principal do MVP, prefira usar:
+     *
+     * `emitirCreditosDeProjetoAprovado`.
      *
      * Regras:
      *
@@ -193,32 +226,77 @@ contract CreditoCarbonoToken is ERC1155, Ownable {
         uint256 quantidade,
         uint256 anoReferencia
     ) external onlyOwner {
-        require(destinatario != address(0), "Destinatario invalido");
-        require(idLote > 0, "Lote invalido");
-        require(idProjeto > 0, "Projeto invalido");
-        require(quantidade > 0, "Quantidade invalida");
-        require(anoReferencia > 0, "Ano invalido");
-        require(!loteEmitido[idLote], "Lote ja emitido");
-
-        lotesCredito[idLote] = LoteCredito({
-            idProjeto: idProjeto,
-            quantidadeEmitida: quantidade,
-            quantidadeAposentada: 0,
-            anoReferencia: anoReferencia,
-            ativo: true
-        });
-
-        loteEmitido[idLote] = true;
-
-        _mint(destinatario, idLote, quantidade, "");
-
-        emit CreditosEmitidos(
+        _registrarLoteEMintar(
+            destinatario,
             idLote,
             idProjeto,
-            destinatario,
             quantidade,
             anoReferencia
         );
+    }
+
+    /**
+     * @notice
+     * Emite créditos de carbono para um projeto aprovado.
+     *
+     * @dev
+     * Esta é a função principal recomendada para o MVP.
+     *
+     * Ela consulta o RegistroProjetosCarbono para obter:
+     *
+     * - se o projeto está aprovado;
+     * - se o projeto ainda não foi emitido;
+     * - quem é o proponente;
+     * - quantos créditos foram aprovados.
+     *
+     * Após emitir o lote ERC-1155, a função chama
+     * `marcarCreditosEmitidos` no RegistroProjetosCarbono.
+     *
+     * Para essa última chamada funcionar, o endereço deste contrato
+     * CreditoCarbonoToken deve estar autorizado no RegistroProjetosCarbono.
+     *
+     * @param enderecoRegistroProjetos Endereço do contrato RegistroProjetosCarbono.
+     * @param idProjeto Identificador do projeto aprovado.
+     * @param idLote Identificador do lote ERC-1155 a ser criado.
+     * @param anoReferencia Ano de referência ambiental do lote.
+     */
+    function emitirCreditosDeProjetoAprovado(
+        address enderecoRegistroProjetos,
+        uint256 idProjeto,
+        uint256 idLote,
+        uint256 anoReferencia
+    ) external onlyOwner {
+        require(
+            enderecoRegistroProjetos != address(0),
+            "Registro invalido"
+        );
+        require(idProjeto > 0, "Projeto invalido");
+        require(idLote > 0, "Lote invalido");
+        require(anoReferencia > 0, "Ano invalido");
+        require(!loteEmitido[idLote], "Lote ja emitido");
+
+        IRegistroProjetosCarbonoCredito registro = IRegistroProjetosCarbonoCredito(
+                enderecoRegistroProjetos
+            );
+
+        require(registro.projetoAprovado(idProjeto), "Projeto nao aprovado");
+        require(!registro.projetoEmitido(idProjeto), "Projeto ja emitido");
+
+        address destinatario = registro.obterProponente(idProjeto);
+        uint256 quantidade = registro.obterCreditosAprovados(idProjeto);
+
+        require(destinatario != address(0), "Proponente invalido");
+        require(quantidade > 0, "Creditos aprovados invalidos");
+
+        _registrarLoteEMintar(
+            destinatario,
+            idLote,
+            idProjeto,
+            quantidade,
+            anoReferencia
+        );
+
+        registro.marcarCreditosEmitidos(idProjeto);
     }
 
     /**
@@ -264,5 +342,54 @@ contract CreditoCarbonoToken is ERC1155, Ownable {
      */
     function loteAtivo(uint256 idLote) external view returns (bool) {
         return lotesCredito[idLote].ativo;
+    }
+
+    /**
+     * @notice
+     * Registra internamente um lote e emite os créditos ERC-1155.
+     *
+     * @dev
+     * Função interna usada tanto pela emissão manual quanto pela emissão
+     * vinculada a projeto aprovado.
+     *
+     * @param destinatario Carteira que receberá os créditos.
+     * @param idLote Identificador do lote ERC-1155.
+     * @param idProjeto Identificador do projeto ambiental associado.
+     * @param quantidade Quantidade de créditos a emitir.
+     * @param anoReferencia Ano de referência ambiental do lote.
+     */
+    function _registrarLoteEMintar(
+        address destinatario,
+        uint256 idLote,
+        uint256 idProjeto,
+        uint256 quantidade,
+        uint256 anoReferencia
+    ) internal {
+        require(destinatario != address(0), "Destinatario invalido");
+        require(idLote > 0, "Lote invalido");
+        require(idProjeto > 0, "Projeto invalido");
+        require(quantidade > 0, "Quantidade invalida");
+        require(anoReferencia > 0, "Ano invalido");
+        require(!loteEmitido[idLote], "Lote ja emitido");
+
+        lotesCredito[idLote] = LoteCredito({
+            idProjeto: idProjeto,
+            quantidadeEmitida: quantidade,
+            quantidadeAposentada: 0,
+            anoReferencia: anoReferencia,
+            ativo: true
+        });
+
+        loteEmitido[idLote] = true;
+
+        _mint(destinatario, idLote, quantidade, "");
+
+        emit CreditosEmitidos(
+            idLote,
+            idProjeto,
+            destinatario,
+            quantidade,
+            anoReferencia
+        );
     }
 }

@@ -6,17 +6,20 @@
  * @dev
  * Este script deve ser executado depois do deploy_local.ts.
  *
- * Fase A:
- * - Configura somente os contratos que realmente foram implantados.
- * - Pula automaticamente contratos com endereço zero.
- * - Gera deployments/localhost.setup.json com etapas executadas e puladas.
+ * MVP atual:
+ * - Mantém os contratos completos implantados.
+ * - Mantém as permissões entre os contratos.
+ * - Desativa temporariamente a exigência de staking para validação.
+ * - Configura votação curta com prazo de 60 segundos.
+ * - Configura quórum mínimo de 1 voto.
+ * - Mantém taxa de submissão de projeto em 0.001 ETH.
  *
  * Objetivo imediato:
- * - permitir testar login;
- * - permitir conexão MetaMask;
- * - permitir cadastro de projeto;
- * - manter taxa de submissão de 0.001 ETH;
- * - evitar erro "Contrato invalido" quando contratos opcionais ainda estão em 0x000...000.
+ * - permitir cadastro de projeto pelo proponente;
+ * - permitir validação simplificada por validador cadastrado;
+ * - permitir iniciar votação;
+ * - permitir aprovar ou rejeitar;
+ * - permitir encerrar votação após prazo curto.
  */
 
 import fs from "node:fs";
@@ -82,6 +85,11 @@ type ResultadoStakingValidacao = {
   stakeMinimoValidador: string;
 };
 
+type ResultadoParametrosVotacao = {
+  prazoVotacaoSegundos: string;
+  quorumMinimo: string;
+};
+
 const DIRETORIO_DEPLOYMENTS = path.join(process.cwd(), "deployments");
 
 const ARQUIVO_DEPLOY_LOCAL = path.join(
@@ -104,11 +112,6 @@ function normalizarEndereco(endereco: string | undefined): string {
   return (endereco ?? "").trim().toLowerCase();
 }
 
-/**
- * @notice
- * Type guard para informar ao TypeScript que, após passar por esta função,
- * o endereço é obrigatoriamente string válida e diferente do endereço zero.
- */
 function enderecoConfigurado(endereco: string | undefined): endereco is string {
   const enderecoNormalizado = normalizarEndereco(endereco);
 
@@ -338,16 +341,84 @@ async function consultarAutorizacaoSegura(
   return contratoControle.contratosAutorizados(enderecoContratoAutorizado);
 }
 
-async function configurarStakeValidacaoSePossivel(params: {
-  validacaoProjetos: any | null;
-  enderecoStakingCarbono: string | undefined;
-}): Promise<ResultadoStakingValidacao> {
-  const { validacaoProjetos, enderecoStakingCarbono } = params;
+async function configurarParametrosVotacaoMVP(
+  validacaoProjetos: any | null
+): Promise<ResultadoParametrosVotacao> {
+  const prazoVotacaoMVP = 60n;
+  const quorumMinimoMVP = 1n;
 
-  const ethers = obterEthers();
+  const descricao = "ValidacaoProjetos.alterarParametrosVotacao(60 segundos, 1 voto)";
 
+  if (!validacaoProjetos) {
+    registrarEtapa({
+      etapa: descricao,
+      status: "pulada",
+      motivo: "ValidacaoProjetos não está implantado.",
+    });
+
+    console.log(`PULADO: ${descricao}. ValidacaoProjetos não está implantado.`);
+    console.log("");
+
+    return {
+      prazoVotacaoSegundos: prazoVotacaoMVP.toString(),
+      quorumMinimo: quorumMinimoMVP.toString(),
+    };
+  }
+
+  let prazoAtual = 0n;
+  let quorumAtual = 0n;
+
+  try {
+    prazoAtual = BigInt((await validacaoProjetos.prazoVotacao()).toString());
+    quorumAtual = BigInt((await validacaoProjetos.quorumMinimo()).toString());
+  } catch {
+    prazoAtual = 0n;
+    quorumAtual = 0n;
+  }
+
+  const parametrosJaConfigurados =
+    prazoAtual === prazoVotacaoMVP && quorumAtual === quorumMinimoMVP;
+
+  if (parametrosJaConfigurados) {
+    registrarEtapa({
+      etapa: descricao,
+      status: "ja_configurada",
+      motivo: "Parâmetros de votação do MVP já estavam configurados.",
+    });
+
+    console.log("OK: Parâmetros de votação do MVP já estavam configurados.");
+    console.log("");
+  } else {
+    await executarTransacao(descricao, () =>
+      validacaoProjetos.alterarParametrosVotacao(
+        prazoVotacaoMVP,
+        quorumMinimoMVP
+      )
+    );
+  }
+
+  let prazoFinal = prazoVotacaoMVP;
+  let quorumFinal = quorumMinimoMVP;
+
+  try {
+    prazoFinal = BigInt((await validacaoProjetos.prazoVotacao()).toString());
+    quorumFinal = BigInt((await validacaoProjetos.quorumMinimo()).toString());
+  } catch {
+    prazoFinal = prazoVotacaoMVP;
+    quorumFinal = quorumMinimoMVP;
+  }
+
+  return {
+    prazoVotacaoSegundos: prazoFinal.toString(),
+    quorumMinimo: quorumFinal.toString(),
+  };
+}
+
+async function configurarStakeValidacaoMVP(
+  validacaoProjetos: any | null
+): Promise<ResultadoStakingValidacao> {
   const descricao =
-    "ValidacaoProjetos.configurarStakeValidador(StakingCarbono, true, 1000 TIC)";
+    "ValidacaoProjetos.configurarStakeValidador(sem staking para MVP)";
 
   if (!validacaoProjetos) {
     registrarEtapa({
@@ -366,80 +437,27 @@ async function configurarStakeValidacaoSePossivel(params: {
     };
   }
 
-  if (!enderecoConfigurado(enderecoStakingCarbono)) {
-    registrarEtapa({
-      etapa: descricao,
-      status: "pulada",
-      motivo: "StakingCarbono está com endereço zero ou indefinido.",
-    });
-
-    console.log(
-      `PULADO: ${descricao}. StakingCarbono está com endereço zero ou indefinido.`
-    );
-    console.log("");
-
-    return {
-      enderecoStaking: await validacaoProjetos.stakingCarbono(),
-      exigirStakeMinimo: await validacaoProjetos.exigirStakeMinimo(),
-      stakeMinimoValidador: (
-        await validacaoProjetos.stakeMinimoValidador()
-      ).toString(),
-    };
-  }
-
-  const stakingPossuiCodigo = await enderecoPossuiContrato(
-    enderecoStakingCarbono
-  );
-
-  if (!stakingPossuiCodigo) {
-    registrarEtapa({
-      etapa: descricao,
-      status: "pulada",
-      motivo: `StakingCarbono não possui bytecode no endereço ${enderecoStakingCarbono}.`,
-    });
-
-    console.log(
-      `PULADO: ${descricao}. StakingCarbono não possui bytecode no endereço ${enderecoStakingCarbono}.`
-    );
-    console.log("");
-
-    return {
-      enderecoStaking: await validacaoProjetos.stakingCarbono(),
-      exigirStakeMinimo: await validacaoProjetos.exigirStakeMinimo(),
-      stakeMinimoValidador: (
-        await validacaoProjetos.stakeMinimoValidador()
-      ).toString(),
-    };
-  }
-
-  const stakeMinimoValidador = ethers.parseUnits("1000", 18);
-
   const enderecoStakingAtual = await validacaoProjetos.stakingCarbono();
   const exigirStakeAtual = await validacaoProjetos.exigirStakeMinimo();
   const stakeMinimoAtual = await validacaoProjetos.stakeMinimoValidador();
 
-  const stakingJaConfigurado =
-    enderecoStakingAtual.toLowerCase() ===
-      enderecoStakingCarbono.toLowerCase() &&
-    exigirStakeAtual === true &&
-    stakeMinimoAtual === stakeMinimoValidador;
+  const stakingMVPJaConfigurado =
+    normalizarEndereco(enderecoStakingAtual) === normalizarEndereco(ENDERECO_ZERO) &&
+    exigirStakeAtual === false &&
+    BigInt(stakeMinimoAtual.toString()) === 0n;
 
-  if (stakingJaConfigurado) {
+  if (stakingMVPJaConfigurado) {
     registrarEtapa({
       etapa: descricao,
       status: "ja_configurada",
-      motivo: "StakingCarbono já estava configurado em ValidacaoProjetos.",
+      motivo: "Validação MVP já estava configurada sem staking obrigatório.",
     });
 
-    console.log("OK: StakingCarbono já está configurado em ValidacaoProjetos");
+    console.log("OK: Validação MVP já está configurada sem staking obrigatório.");
     console.log("");
   } else {
     await executarTransacao(descricao, () =>
-      validacaoProjetos.configurarStakeValidador(
-        enderecoStakingCarbono,
-        true,
-        stakeMinimoValidador
-      )
+      validacaoProjetos.configurarStakeValidador(ENDERECO_ZERO, false, 0)
     );
   }
 
@@ -618,10 +636,13 @@ async function main(): Promise<void> {
     enderecoContratoAutorizado: enderecos.StakingCarbono,
   });
 
-  const stakingValidacao = await configurarStakeValidacaoSePossivel({
-    validacaoProjetos,
-    enderecoStakingCarbono: enderecos.StakingCarbono,
-  });
+  const parametrosVotacao = await configurarParametrosVotacaoMVP(
+    validacaoProjetos
+  );
+
+  const stakingValidacao = await configurarStakeValidacaoMVP(
+    validacaoProjetos
+  );
 
   const enderecoTesouraria = obterEnderecoObrigatorio(
     "TesourariaCarbono",
@@ -673,7 +694,7 @@ async function main(): Promise<void> {
       geradoEm: dadosDeploy.geradoEm ?? null,
     },
     configuradoEm: new Date().toISOString(),
-    modo: "Fase A - setup tolerante a contratos ainda não implantados",
+    modo: "MVP - validação simplificada sem staking obrigatório",
     autorizacoes: {
       ValidacaoProjetos_em_RegistroProjetosCarbono:
         validacaoAutorizadaFinal,
@@ -695,6 +716,7 @@ async function main(): Promise<void> {
         aposentadoriaAutorizadaNoCertificado,
       StakingCarbono_em_TesourariaCarbono: stakingAutorizado,
     },
+    parametrosVotacao,
     stakingValidacao,
     tesouraria: {
       saldoTIC: saldoFinalTICTesouraria.toString(),
@@ -723,6 +745,13 @@ async function main(): Promise<void> {
   );
   console.log(
     `StakingCarbono autorizado na TesourariaCarbono: ${stakingAutorizadoFinal}`
+  );
+  console.log(
+    `Prazo de votação MVP: ${parametrosVotacao.prazoVotacaoSegundos} segundos`
+  );
+  console.log(`Quórum mínimo MVP: ${parametrosVotacao.quorumMinimo} voto`);
+  console.log(
+    `Stake obrigatório na validação: ${stakingValidacao.exigirStakeMinimo}`
   );
   console.log(
     `Stake mínimo exigido na validação: ${ethers.formatUnits(
