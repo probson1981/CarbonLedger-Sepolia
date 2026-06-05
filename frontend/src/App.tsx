@@ -2000,3 +2000,2029 @@ function PainelAposentadoriaCertificados({
     </section>
   );
 }
+
+function PainelCompraCreditos() {
+  const [ofertas, setOfertas] = useState<OfertaMarketplace[]>([]);
+  const [ofertaSelecionadaId, setOfertaSelecionadaId] = useState("");
+  const [quantidadeCompra, setQuantidadeCompra] = useState("");
+  const [valoresCompra, setValoresCompra] =
+    useState<ValoresCompraOferta | null>(null);
+  const [saldoComprador, setSaldoComprador] = useState("");
+  const [executando, setExecutando] = useState(false);
+  const [mensagemCompra, setMensagemCompra] = useState("");
+
+  const ofertaSelecionada = ofertas.find(
+    (oferta) => oferta.idOferta === ofertaSelecionadaId
+  );
+
+  function selecionarOferta(oferta: OfertaMarketplace) {
+    setOfertaSelecionadaId(oferta.idOferta);
+    setQuantidadeCompra("1");
+    setValoresCompra(null);
+    setSaldoComprador("");
+
+    setMensagemCompra(
+      `Oferta ${oferta.idOferta} selecionada. Lote ${oferta.idLote}, disponível: ${oferta.quantidadeDisponivel}.`
+    );
+  }
+
+  async function carregarOfertasDisponiveis() {
+    try {
+      setExecutando(true);
+      setMensagemCompra("Carregando ofertas disponíveis...");
+
+      const lista = await listarOfertas({
+        apenasDisponiveis: true,
+        limite: 50,
+      });
+
+      setOfertas(lista);
+
+      setMensagemCompra(`Foram carregadas ${lista.length} oferta(s) disponível(is).`);
+    } catch (erro) {
+      setMensagemCompra(`Erro ao carregar ofertas: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function calcularCompraSelecionada() {
+    if (!ofertaSelecionada) {
+      setMensagemCompra("Selecione uma oferta.");
+      return;
+    }
+
+    if (!quantidadeCompra || Number(quantidadeCompra) <= 0) {
+      setMensagemCompra("Informe uma quantidade válida para compra.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+      setMensagemCompra("Calculando valores da compra...");
+
+      const valores = await calcularCompraOferta({
+        idOferta: ofertaSelecionada.idOferta,
+        quantidade: quantidadeCompra,
+      });
+
+      setValoresCompra(valores);
+
+      setMensagemCompra(
+        `Compra calculada. Valor total: ${valores.valorTotalETH} ETH. Taxa: ${valores.valorTaxaETH} ETH. Vendedor recebe: ${valores.valorVendedorETH} ETH.`
+      );
+    } catch (erro) {
+      setMensagemCompra(`Erro ao calcular compra: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function comprarOfertaSelecionada() {
+    if (!ofertaSelecionada) {
+      setMensagemCompra("Selecione uma oferta.");
+      return;
+    }
+
+    if (!quantidadeCompra || Number(quantidadeCompra) <= 0) {
+      setMensagemCompra("Informe uma quantidade válida para compra.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+      setMensagemCompra("Enviando compra para a MetaMask...");
+
+      const resultado = await comprarCreditosOferta({
+        idOferta: ofertaSelecionada.idOferta,
+        quantidade: quantidadeCompra,
+      });
+
+      const saldo = await consultarSaldoCreditoMarketplace({
+        idLote: resultado.idLote,
+      });
+
+      setSaldoComprador(saldo);
+
+      setMensagemCompra(
+        `Compra realizada com sucesso. Hash: ${resultado.hash}. Quantidade: ${resultado.quantidade}. Lote: ${resultado.idLote}. Valor total: ${resultado.valorTotalETH} ETH. Saldo atual do comprador no lote: ${saldo}.`
+      );
+
+      await carregarOfertasDisponiveis();
+    } catch (erro) {
+      setMensagemCompra(`Erro ao comprar créditos: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function consultarSaldoComprador() {
+    if (!ofertaSelecionada) {
+      setMensagemCompra("Selecione uma oferta para consultar o saldo do lote.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+      setMensagemCompra("Consultando saldo do comprador no lote...");
+
+      const saldo = await consultarSaldoCreditoMarketplace({
+        idLote: ofertaSelecionada.idLote,
+      });
+
+      setSaldoComprador(saldo);
+
+      setMensagemCompra(
+        `Saldo do comprador no lote ${ofertaSelecionada.idLote}: ${saldo}.`
+      );
+    } catch (erro) {
+      setMensagemCompra(`Erro ao consultar saldo: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  return (
+    <section className="form-card">
+      <div className="section-title">
+        <div>
+          <span className="badge">Marketplace</span>
+          <h3>Comprar créditos de carbono</h3>
+          <p>
+            O comprador visualiza ofertas disponíveis, calcula o valor da compra
+            e adquire créditos ERC-1155 usando ETH.
+          </p>
+        </div>
+      </div>
+
+      <div className="form-actions">
+        <button
+          className="btn-primary"
+          type="button"
+          disabled={executando}
+          onClick={() => void carregarOfertasDisponiveis()}
+        >
+          Atualizar ofertas disponíveis
+        </button>
+      </div>
+
+      {ofertas.length === 0 ? (
+        <div className="empty-state">
+          Nenhuma oferta carregada. Clique em Atualizar ofertas disponíveis.
+        </div>
+      ) : (
+        <div className="projetos-table-wrap">
+          <table className="projetos-table">
+            <thead>
+              <tr>
+                <th>ID oferta</th>
+                <th>Vendedor</th>
+                <th>ID lote</th>
+                <th>Disponível</th>
+                <th>Preço por crédito</th>
+                <th>Estado</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {ofertas.map((oferta) => (
+                <tr key={oferta.idOferta}>
+                  <td>{oferta.idOferta}</td>
+                  <td>{encurtarEndereco(oferta.vendedor)}</td>
+                  <td>{oferta.idLote}</td>
+                  <td>{oferta.quantidadeDisponivel}</td>
+                  <td>{oferta.precoPorCreditoETH} ETH</td>
+                  <td>
+                    <span className="status-pill">
+                      {oferta.estadoOfertaTexto}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      className="btn-secondary"
+                      type="button"
+                      onClick={() => selecionarOferta(oferta)}
+                    >
+                      Selecionar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {ofertaSelecionada && (
+        <div className="status-operacao">
+          <div className="section-title">
+            <div>
+              <span className="badge">Oferta selecionada</span>
+              <h3>Oferta {ofertaSelecionada.idOferta}</h3>
+              <p>
+                Lote: {ofertaSelecionada.idLote} | Disponível:{" "}
+                {ofertaSelecionada.quantidadeDisponivel} | Preço:{" "}
+                {ofertaSelecionada.precoPorCreditoETH} ETH por crédito
+              </p>
+            </div>
+          </div>
+
+          <div className="form-grid">
+            <label>
+              Quantidade a comprar
+              <input
+                value={quantidadeCompra}
+                onChange={(e) => {
+                  setQuantidadeCompra(e.target.value);
+                  setValoresCompra(null);
+                }}
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Exemplo: 10"
+              />
+            </label>
+          </div>
+
+          <div className="form-actions">
+            <button
+              className="btn-secondary"
+              type="button"
+              disabled={executando}
+              onClick={() => void calcularCompraSelecionada()}
+            >
+              Calcular compra
+            </button>
+
+            <button
+              className="btn-primary"
+              type="button"
+              disabled={executando}
+              onClick={() => void comprarOfertaSelecionada()}
+            >
+              Comprar créditos
+            </button>
+
+            <button
+              className="btn-secondary"
+              type="button"
+              disabled={executando}
+              onClick={() => void consultarSaldoComprador()}
+            >
+              Consultar meu saldo no lote
+            </button>
+          </div>
+
+          <div className="status-grid">
+            <div>
+              <span>Quantidade selecionada</span>
+              <strong>{quantidadeCompra || "Não informada"}</strong>
+            </div>
+
+            <div>
+              <span>Preço unitário</span>
+              <strong>{ofertaSelecionada.precoPorCreditoETH} ETH</strong>
+            </div>
+
+            <div>
+              <span>Saldo do comprador no lote</span>
+              <strong>{saldoComprador || "Não consultado"}</strong>
+            </div>
+
+            <div>
+              <span>Estado da oferta</span>
+              <strong>{ofertaSelecionada.estadoOfertaTexto}</strong>
+            </div>
+
+            {valoresCompra && (
+              <>
+                <div>
+                  <span>Valor total</span>
+                  <strong>{valoresCompra.valorTotalETH} ETH</strong>
+                </div>
+
+                <div>
+                  <span>Taxa marketplace</span>
+                  <strong>{valoresCompra.valorTaxaETH} ETH</strong>
+                </div>
+
+                <div>
+                  <span>Valor líquido ao vendedor</span>
+                  <strong>{valoresCompra.valorVendedorETH} ETH</strong>
+                </div>
+              </>
+            )}
+          </div>
+
+          {mensagemCompra && (
+            <div className="status-message">{mensagemCompra}</div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PainelOfertaCreditos({ projetos }: { projetos: ProjetoCarbono[] }) {
+  const [projetoSelecionadoId, setProjetoSelecionadoId] = useState("");
+  const [idLote, setIdLote] = useState("");
+  const [quantidade, setQuantidade] = useState("");
+  const [precoPorCreditoETH, setPrecoPorCreditoETH] = useState("0.001");
+  const [saldoLote, setSaldoLote] = useState("");
+  const [marketplaceAprovado, setMarketplaceAprovado] = useState(false);
+  const [executando, setExecutando] = useState(false);
+  const [mensagemOferta, setMensagemOferta] = useState("");
+  const [ofertas, setOfertas] = useState<OfertaMarketplace[]>([]);
+
+  const projetosComCreditosEmitidos = projetos.filter(
+    (projeto) =>
+      Boolean(projeto.idProjetoBlockchain) &&
+      projeto.status === "Créditos emitidos"
+  );
+
+  const projetoSelecionado = projetosComCreditosEmitidos.find(
+    (projeto) => projeto.id === projetoSelecionadoId
+  );
+
+  function selecionarProjeto(projeto: ProjetoCarbono) {
+    const loteSugerido = projeto.idProjetoBlockchain
+      ? sugerirIdLote(projeto.idProjetoBlockchain)
+      : "";
+
+    setProjetoSelecionadoId(projeto.id);
+    setIdLote(loteSugerido);
+    setQuantidade("");
+    setSaldoLote("");
+    setMarketplaceAprovado(false);
+
+    setMensagemOferta(
+      `Projeto ${projeto.idProjetoBlockchain} selecionado para oferta.`
+    );
+  }
+
+  async function consultarSaldoEAprovacao() {
+    if (!idLote) {
+      setMensagemOferta("Selecione um projeto ou informe o ID do lote.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+      setMensagemOferta("Consultando saldo e aprovação do marketplace...");
+
+      const [saldo, aprovado] = await Promise.all([
+        consultarSaldoCreditoMarketplace({ idLote }),
+        verificarMarketplaceAprovado(),
+      ]);
+
+      setSaldoLote(saldo);
+      setMarketplaceAprovado(aprovado);
+
+      setMensagemOferta(
+        `Consulta concluída. Saldo no lote ${idLote}: ${saldo}. Marketplace aprovado: ${
+          aprovado ? "sim" : "não"
+        }.`
+      );
+    } catch (erro) {
+      setMensagemOferta(`Erro na consulta: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function aprovarMarketplace() {
+    try {
+      setExecutando(true);
+      setMensagemOferta("Solicitando aprovação ERC-1155 na MetaMask...");
+
+      const resultado = await aprovarMarketplaceParaCreditos(true);
+
+      setMarketplaceAprovado(true);
+
+      setMensagemOferta(
+        `Marketplace aprovado para movimentar seus créditos. Hash: ${resultado.hash}.`
+      );
+    } catch (erro) {
+      setMensagemOferta(`Erro ao aprovar marketplace: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function criarOfertaSelecionada() {
+    if (!idLote) {
+      setMensagemOferta("Informe o ID do lote.");
+      return;
+    }
+
+    if (!quantidade || Number(quantidade) <= 0) {
+      setMensagemOferta("Informe uma quantidade válida para oferta.");
+      return;
+    }
+
+    if (!precoPorCreditoETH || Number(precoPorCreditoETH) <= 0) {
+      setMensagemOferta("Informe um preço válido por crédito em ETH.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+      setMensagemOferta("Criando oferta no marketplace...");
+
+      const resultado = await criarOfertaCreditos({
+        idLote,
+        quantidade,
+        precoPorCreditoETH,
+      });
+
+      setMensagemOferta(
+        `Oferta criada com sucesso. ID da oferta: ${resultado.idOferta}. Hash: ${resultado.hash}.`
+      );
+
+      await carregarOfertas();
+    } catch (erro) {
+      setMensagemOferta(`Erro ao criar oferta: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function carregarOfertas() {
+    try {
+      setExecutando(true);
+      setMensagemOferta("Carregando ofertas do marketplace...");
+
+      const lista = await listarOfertas({
+        apenasDisponiveis: false,
+        limite: 50,
+      });
+
+      setOfertas(lista);
+
+      setMensagemOferta(`Foram carregadas ${lista.length} oferta(s).`);
+    } catch (erro) {
+      setMensagemOferta(`Erro ao carregar ofertas: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function cancelarOfertaSelecionada(idOferta: string) {
+    try {
+      setExecutando(true);
+      setMensagemOferta(`Cancelando oferta ${idOferta}...`);
+
+      const resultado = await cancelarOfertaCreditos(idOferta);
+
+      setMensagemOferta(
+        `Oferta ${idOferta} cancelada com sucesso. Hash: ${resultado.hash}.`
+      );
+
+      await carregarOfertas();
+    } catch (erro) {
+      setMensagemOferta(`Erro ao cancelar oferta: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  return (
+    <section className="form-card">
+      <div className="section-title">
+        <div>
+          <span className="badge">Marketplace</span>
+          <h3>Ofertar créditos de carbono</h3>
+          <p>
+            O proponente seleciona um lote emitido, aprova o marketplace no
+            ERC-1155 e cria uma oferta de venda.
+          </p>
+        </div>
+      </div>
+
+      {projetosComCreditosEmitidos.length === 0 ? (
+        <div className="empty-state">
+          Nenhum projeto com créditos emitidos disponível para oferta.
+        </div>
+      ) : (
+        <>
+          <div className="projetos-table-wrap">
+            <table className="projetos-table">
+              <thead>
+                <tr>
+                  <th>ID blockchain</th>
+                  <th>Projeto</th>
+                  <th>Tipo</th>
+                  <th>Localização</th>
+                  <th>Créditos</th>
+                  <th>Status</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {projetosComCreditosEmitidos.map((projeto) => (
+                  <tr key={projeto.id}>
+                    <td>{projeto.idProjetoBlockchain}</td>
+                    <td>
+                      <strong>{projeto.nome}</strong>
+                      <span>{projeto.descricao}</span>
+                    </td>
+                    <td>{projeto.tipo}</td>
+                    <td>{projeto.localizacao}</td>
+                    <td>{projeto.creditosSolicitados}</td>
+                    <td>
+                      <span className="status-pill">{projeto.status}</span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn-secondary"
+                        type="button"
+                        onClick={() => selecionarProjeto(projeto)}
+                      >
+                        Selecionar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {projetoSelecionado && (
+            <div className="status-operacao">
+              <div className="section-title">
+                <div>
+                  <span className="badge">Projeto selecionado</span>
+                  <h3>{projetoSelecionado.nome}</h3>
+                  <p>
+                    ID blockchain: {projetoSelecionado.idProjetoBlockchain} |
+                    Lote sugerido: {idLote || "não definido"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="form-grid">
+                <label>
+                  ID do lote ERC-1155
+                  <input
+                    value={idLote}
+                    onChange={(e) => setIdLote(e.target.value)}
+                    placeholder="Exemplo: 1"
+                  />
+                </label>
+
+                <label>
+                  Quantidade a ofertar
+                  <input
+                    value={quantidade}
+                    onChange={(e) => setQuantidade(e.target.value)}
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Exemplo: 100"
+                  />
+                </label>
+
+                <label>
+                  Preço por crédito em ETH
+                  <input
+                    value={precoPorCreditoETH}
+                    onChange={(e) => setPrecoPorCreditoETH(e.target.value)}
+                    placeholder="Exemplo: 0.001"
+                  />
+                </label>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  disabled={executando}
+                  onClick={() => void consultarSaldoEAprovacao()}
+                >
+                  Consultar saldo e aprovação
+                </button>
+
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  disabled={executando || marketplaceAprovado}
+                  onClick={() => void aprovarMarketplace()}
+                >
+                  Aprovar marketplace
+                </button>
+
+                <button
+                  className="btn-primary"
+                  type="button"
+                  disabled={executando}
+                  onClick={() => void criarOfertaSelecionada()}
+                >
+                  Criar oferta
+                </button>
+
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  disabled={executando}
+                  onClick={() => void carregarOfertas()}
+                >
+                  Atualizar ofertas
+                </button>
+              </div>
+
+              <div className="status-grid">
+                <div>
+                  <span>Saldo no lote</span>
+                  <strong>{saldoLote || "Não consultado"}</strong>
+                </div>
+
+                <div>
+                  <span>Marketplace aprovado?</span>
+                  <strong>{marketplaceAprovado ? "Sim" : "Não"}</strong>
+                </div>
+
+                <div>
+                  <span>Preço por crédito</span>
+                  <strong>{precoPorCreditoETH || "Não informado"} ETH</strong>
+                </div>
+
+                <div>
+                  <span>Quantidade da oferta</span>
+                  <strong>{quantidade || "Não informada"}</strong>
+                </div>
+              </div>
+
+              {mensagemOferta && (
+                <div className="status-message">{mensagemOferta}</div>
+              )}
+            </div>
+          )}
+
+          <div className="section-title">
+            <div>
+              <span className="badge">Ofertas</span>
+              <h3>Ofertas do marketplace</h3>
+              <p>
+                Lista das ofertas recentes. O comprador usará esta mesma base
+                para comprar créditos.
+              </p>
+            </div>
+          </div>
+
+          {ofertas.length === 0 ? (
+            <div className="empty-state">
+              Nenhuma oferta carregada. Clique em Atualizar ofertas.
+            </div>
+          ) : (
+            <div className="projetos-table-wrap">
+              <table className="projetos-table">
+                <thead>
+                  <tr>
+                    <th>ID oferta</th>
+                    <th>Vendedor</th>
+                    <th>ID lote</th>
+                    <th>Quantidade total</th>
+                    <th>Disponível</th>
+                    <th>Preço</th>
+                    <th>Estado</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {ofertas.map((oferta) => (
+                    <tr key={oferta.idOferta}>
+                      <td>{oferta.idOferta}</td>
+                      <td>{encurtarEndereco(oferta.vendedor)}</td>
+                      <td>{oferta.idLote}</td>
+                      <td>{oferta.quantidadeTotal}</td>
+                      <td>{oferta.quantidadeDisponivel}</td>
+                      <td>{oferta.precoPorCreditoETH} ETH</td>
+                      <td>
+                        <span className="status-pill">
+                          {oferta.estadoOfertaTexto}
+                        </span>
+                      </td>
+                      <td>
+                        {oferta.disponivel ? (
+                          <button
+                            className="btn-secondary"
+                            type="button"
+                            disabled={executando}
+                            onClick={() =>
+                              void cancelarOfertaSelecionada(oferta.idOferta)
+                            }
+                          >
+                            Cancelar
+                          </button>
+                        ) : (
+                          <span>Indisponível</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function PainelEmissaoCreditos({
+  projetos,
+  onAtualizarStatusProjeto,
+}: {
+  projetos: ProjetoCarbono[];
+  onAtualizarStatusProjeto: (
+    idProjetoBlockchain: string,
+    status: StatusProjeto
+  ) => void;
+}) {
+  const [projetoSelecionadoId, setProjetoSelecionadoId] = useState("");
+  const [anoReferencia, setAnoReferencia] = useState(obterAnoAtual());
+  const [idLote, setIdLote] = useState("");
+  const [executando, setExecutando] = useState(false);
+  const [mensagemEmissao, setMensagemEmissao] = useState("");
+  const [resumoEmissao, setResumoEmissao] =
+    useState<ResumoProjetoEmissaoTela | null>(null);
+  const [loteEmitido, setLoteEmitido] = useState<LoteCreditoTela | null>(null);
+  const [saldoProponente, setSaldoProponente] = useState("");
+
+  const projetosAguardandoEmissao = projetos.filter(
+    (projeto) =>
+      Boolean(projeto.idProjetoBlockchain) && projeto.status === "Aprovado"
+  );
+
+  const projetosComCreditosEmitidos = projetos.filter(
+    (projeto) =>
+      Boolean(projeto.idProjetoBlockchain) &&
+      projeto.status === "Créditos emitidos"
+  );
+
+  const projetosAdministraveis = [
+    ...projetosAguardandoEmissao,
+    ...projetosComCreditosEmitidos,
+  ];
+
+  const projetoSelecionado = projetosAdministraveis.find(
+    (projeto) => projeto.id === projetoSelecionadoId
+  );
+
+  const idProjetoBlockchain = projetoSelecionado?.idProjetoBlockchain ?? "";
+
+  const projetoSelecionadoAguardandoEmissao =
+    projetoSelecionado?.status === "Aprovado";
+
+  const projetoSelecionadoJaEmitido =
+    projetoSelecionado?.status === "Créditos emitidos";
+
+  function selecionarProjetoParaEmissao(projeto: ProjetoCarbono) {
+    setProjetoSelecionadoId(projeto.id);
+    setResumoEmissao(null);
+    setLoteEmitido(null);
+    setSaldoProponente("");
+
+    const loteSugerido = projeto.idProjetoBlockchain
+      ? sugerirIdLote(projeto.idProjetoBlockchain)
+      : "";
+
+    setIdLote(loteSugerido);
+
+    setMensagemEmissao(
+      `Projeto ${projeto.idProjetoBlockchain} selecionado. Status atual: ${projeto.status}.`
+    );
+  }
+
+  async function consultarProjetoParaEmissao() {
+    if (!idProjetoBlockchain) {
+      setMensagemEmissao("Selecione um projeto com ID blockchain.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+      setMensagemEmissao("Consultando projeto na blockchain...");
+
+      const resumo = await consultarResumoProjetoParaEmissao(idProjetoBlockchain);
+
+      setResumoEmissao(resumo);
+
+      const loteSugerido = sugerirIdLote(idProjetoBlockchain);
+      setIdLote((atual) => atual || loteSugerido);
+
+      if (resumo.emitido) {
+        onAtualizarStatusProjeto(idProjetoBlockchain, "Créditos emitidos");
+      }
+
+      setMensagemEmissao(
+        `Consulta concluída. Aprovado: ${
+          resumo.aprovado ? "sim" : "não"
+        }. Emitido: ${resumo.emitido ? "sim" : "não"}. Créditos aprovados: ${
+          resumo.creditosAprovados
+        }. Proponente: ${encurtarEndereco(resumo.proponente)}.`
+      );
+    } catch (erro) {
+      setMensagemEmissao(`Erro na consulta: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function emitirCreditosSelecionado() {
+    if (!projetoSelecionado || !idProjetoBlockchain) {
+      setMensagemEmissao("Selecione um projeto aprovado com ID blockchain.");
+      return;
+    }
+
+    if (!projetoSelecionadoAguardandoEmissao) {
+      setMensagemEmissao(
+        "Este projeto não está aguardando emissão. Apenas projetos com status Aprovado podem emitir créditos."
+      );
+      return;
+    }
+
+    try {
+      setExecutando(true);
+
+      const loteFinal = idLote || sugerirIdLote(idProjetoBlockchain);
+
+      setMensagemEmissao(
+        `Solicitando emissão dos créditos do projeto ${idProjetoBlockchain} na MetaMask...`
+      );
+
+      const resultado = await emitirCreditosProjetoAprovado({
+        idProjeto: idProjetoBlockchain,
+        idLote: loteFinal,
+        anoReferencia,
+      });
+
+      onAtualizarStatusProjeto(idProjetoBlockchain, "Créditos emitidos");
+
+      const [resumoAtualizado, lote] = await Promise.all([
+        consultarResumoProjetoParaEmissao(idProjetoBlockchain),
+        consultarLoteCredito(resultado.idLote),
+      ]);
+
+      let saldo = "";
+
+      if (resumoAtualizado.proponente) {
+        saldo = await consultarSaldoLote({
+          carteira: resumoAtualizado.proponente,
+          idLote: resultado.idLote,
+        });
+      }
+
+      setResumoEmissao(resumoAtualizado);
+      setLoteEmitido(lote);
+      setSaldoProponente(saldo);
+
+      setMensagemEmissao(
+        `Créditos emitidos com sucesso. Hash: ${resultado.hash}. Lote: ${resultado.idLote}. Ano: ${resultado.anoReferencia}.`
+      );
+    } catch (erro) {
+      setMensagemEmissao(`Erro ao emitir créditos: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function consultarLoteSelecionado() {
+    const loteFinal = idLote || idProjetoBlockchain;
+
+    if (!loteFinal) {
+      setMensagemEmissao("Informe ou selecione um ID de lote.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+
+      const lote = await consultarLoteCredito(loteFinal);
+
+      setLoteEmitido(lote);
+
+      let saldo = "";
+
+      const proponenteConsulta =
+        resumoEmissao?.proponente ||
+        (idProjetoBlockchain
+          ? (await consultarResumoProjetoParaEmissao(idProjetoBlockchain))
+              .proponente
+          : "");
+
+      if (proponenteConsulta) {
+        saldo = await consultarSaldoLote({
+          carteira: proponenteConsulta,
+          idLote: loteFinal,
+        });
+
+        setSaldoProponente(saldo);
+      }
+
+      setMensagemEmissao(
+        `Lote consultado. Emitido: ${
+          lote.loteEmitido ? "sim" : "não"
+        }. Quantidade emitida: ${lote.quantidadeEmitida}. Saldo do proponente: ${
+          saldo || "não consultado"
+        }.`
+      );
+    } catch (erro) {
+      setMensagemEmissao(`Erro ao consultar lote: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  return (
+    <section className="form-card">
+      <div className="section-title">
+        <div>
+          <span className="badge">Administração</span>
+          <h3>Emissão de créditos de carbono</h3>
+          <p>
+            Acompanhe projetos aprovados aguardando emissão e projetos que já
+            tiveram créditos ERC-1155 emitidos.
+          </p>
+        </div>
+      </div>
+
+      {projetosAdministraveis.length === 0 ? (
+        <div className="empty-state">
+          Nenhum projeto aprovado ou com créditos emitidos disponível para
+          acompanhamento.
+        </div>
+      ) : (
+        <>
+          <div className="section-title">
+            <div>
+              <span className="badge">Fila de emissão</span>
+              <h3>Projetos aprovados aguardando emissão</h3>
+              <p>
+                Estes projetos já foram aprovados pelos validadores, mas ainda
+                não tiveram o lote ERC-1155 emitido.
+              </p>
+            </div>
+          </div>
+
+          {projetosAguardandoEmissao.length === 0 ? (
+            <div className="empty-state">
+              Nenhum projeto aguardando emissão no momento.
+            </div>
+          ) : (
+            <div className="projetos-table-wrap">
+              <table className="projetos-table">
+                <thead>
+                  <tr>
+                    <th>ID blockchain</th>
+                    <th>Projeto</th>
+                    <th>Tipo</th>
+                    <th>Localização</th>
+                    <th>Créditos solicitados</th>
+                    <th>Status</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {projetosAguardandoEmissao.map((projeto) => (
+                    <tr key={projeto.id}>
+                      <td>{projeto.idProjetoBlockchain}</td>
+                      <td>
+                        <strong>{projeto.nome}</strong>
+                        <span>{projeto.descricao}</span>
+                      </td>
+                      <td>{projeto.tipo}</td>
+                      <td>{projeto.localizacao}</td>
+                      <td>{projeto.creditosSolicitados}</td>
+                      <td>
+                        <span className="status-pill">{projeto.status}</span>
+                      </td>
+                      <td>
+                        <button
+                          className="btn-secondary"
+                          type="button"
+                          onClick={() => selecionarProjetoParaEmissao(projeto)}
+                        >
+                          Selecionar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="section-title">
+            <div>
+              <span className="badge">Histórico</span>
+              <h3>Projetos com créditos emitidos</h3>
+              <p>
+                Estes projetos já tiveram lote de créditos criado. Aqui faz
+                sentido consultar lote, quantidade emitida e saldo do proponente.
+              </p>
+            </div>
+          </div>
+
+          {projetosComCreditosEmitidos.length === 0 ? (
+            <div className="empty-state">
+              Nenhum projeto com créditos emitidos ainda.
+            </div>
+          ) : (
+            <div className="projetos-table-wrap">
+              <table className="projetos-table">
+                <thead>
+                  <tr>
+                    <th>ID blockchain</th>
+                    <th>Projeto</th>
+                    <th>Tipo</th>
+                    <th>Localização</th>
+                    <th>Créditos solicitados</th>
+                    <th>Status</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {projetosComCreditosEmitidos.map((projeto) => (
+                    <tr key={projeto.id}>
+                      <td>{projeto.idProjetoBlockchain}</td>
+                      <td>
+                        <strong>{projeto.nome}</strong>
+                        <span>{projeto.descricao}</span>
+                      </td>
+                      <td>{projeto.tipo}</td>
+                      <td>{projeto.localizacao}</td>
+                      <td>{projeto.creditosSolicitados}</td>
+                      <td>
+                        <span className="status-pill">{projeto.status}</span>
+                      </td>
+                      <td>
+                        <button
+                          className="btn-secondary"
+                          type="button"
+                          onClick={() => selecionarProjetoParaEmissao(projeto)}
+                        >
+                          Consultar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {projetoSelecionado && (
+            <div className="status-operacao">
+              <div className="section-title">
+                <div>
+                  <span className="badge">Projeto selecionado</span>
+                  <h3>{projetoSelecionado.nome}</h3>
+                  <p>
+                    ID blockchain: {projetoSelecionado.idProjetoBlockchain} |
+                    Créditos solicitados: {projetoSelecionado.creditosSolicitados} |
+                    Status local: {projetoSelecionado.status}
+                  </p>
+                </div>
+              </div>
+
+              <div className="form-grid">
+                <label>
+                  ID do lote ERC-1155
+                  <input
+                    value={idLote}
+                    onChange={(e) => setIdLote(e.target.value)}
+                    placeholder="Exemplo: 1"
+                  />
+                </label>
+
+                <label>
+                  Ano de referência
+                  <input
+                    value={anoReferencia}
+                    onChange={(e) => setAnoReferencia(e.target.value)}
+                    placeholder="Exemplo: 2026"
+                  />
+                </label>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  disabled={executando}
+                  onClick={() => void consultarProjetoParaEmissao()}
+                >
+                  Consultar projeto
+                </button>
+
+                {projetoSelecionadoAguardandoEmissao && (
+                  <button
+                    className="btn-primary"
+                    type="button"
+                    disabled={executando || resumoEmissao?.emitido === true}
+                    onClick={() => void emitirCreditosSelecionado()}
+                  >
+                    Emitir créditos
+                  </button>
+                )}
+
+                {(projetoSelecionadoJaEmitido || resumoEmissao?.emitido) && (
+                  <button
+                    className="btn-secondary"
+                    type="button"
+                    disabled={executando}
+                    onClick={() => void consultarLoteSelecionado()}
+                  >
+                    Consultar lote
+                  </button>
+                )}
+              </div>
+
+              {(resumoEmissao || loteEmitido) && (
+                <div className="status-grid">
+                  {resumoEmissao && (
+                    <>
+                      <div>
+                        <span>Projeto aprovado?</span>
+                        <strong>{resumoEmissao.aprovado ? "Sim" : "Não"}</strong>
+                      </div>
+
+                      <div>
+                        <span>Projeto já emitido?</span>
+                        <strong>{resumoEmissao.emitido ? "Sim" : "Não"}</strong>
+                      </div>
+
+                      <div>
+                        <span>Créditos aprovados</span>
+                        <strong>{resumoEmissao.creditosAprovados}</strong>
+                      </div>
+
+                      <div>
+                        <span>Proponente</span>
+                        <strong>{encurtarEndereco(resumoEmissao.proponente)}</strong>
+                      </div>
+                    </>
+                  )}
+
+                  {loteEmitido && (
+                    <>
+                      <div>
+                        <span>Lote emitido?</span>
+                        <strong>{loteEmitido.loteEmitido ? "Sim" : "Não"}</strong>
+                      </div>
+
+                      <div>
+                        <span>Quantidade emitida</span>
+                        <strong>{loteEmitido.quantidadeEmitida}</strong>
+                      </div>
+
+                      <div>
+                        <span>Quantidade aposentada</span>
+                        <strong>{loteEmitido.quantidadeAposentada}</strong>
+                      </div>
+
+                      <div>
+                        <span>Ano do lote</span>
+                        <strong>{loteEmitido.anoReferencia}</strong>
+                      </div>
+
+                      <div>
+                        <span>Lote ativo?</span>
+                        <strong>{loteEmitido.ativo ? "Sim" : "Não"}</strong>
+                      </div>
+
+                      <div>
+                        <span>Saldo do proponente no lote</span>
+                        <strong>{saldoProponente || "Não consultado"}</strong>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {mensagemEmissao && (
+                <div className="status-message">{mensagemEmissao}</div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function PainelValidacaoProjetos({
+  projetos,
+  onAtualizarStatusProjeto,
+}: {
+  projetos: ProjetoCarbono[];
+  onAtualizarStatusProjeto: (
+    idProjetoBlockchain: string,
+    status: StatusProjeto
+  ) => void;
+}) {
+  const [projetoSelecionadoId, setProjetoSelecionadoId] = useState("");
+  const [executando, setExecutando] = useState(false);
+  const [mensagemValidacao, setMensagemValidacao] = useState("");
+  const [resultadoConsulta, setResultadoConsulta] =
+    useState<ResultadoValidacaoTela | null>(null);
+  const [agoraSegundos, setAgoraSegundos] = useState(() =>
+    Math.floor(Date.now() / 1000)
+  );
+
+  useEffect(() => {
+    const intervalo = window.setInterval(() => {
+      setAgoraSegundos(Math.floor(Date.now() / 1000));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalo);
+    };
+  }, []);
+
+  const projetosValidaveis = projetos.filter(
+    (projeto) =>
+      Boolean(projeto.idProjetoBlockchain) &&
+      (projeto.status === "Pendente de validação" ||
+        projeto.status === "Em análise")
+  );
+
+  const projetoSelecionado = projetosValidaveis.find(
+    (projeto) => projeto.id === projetoSelecionadoId
+  );
+
+  const idProjetoBlockchain = projetoSelecionado?.idProjetoBlockchain ?? "";
+
+  const tempoRestanteTela = useMemo(() => {
+    const dados = resultadoConsulta?.dadosVotacao;
+
+    if (!dados || dados.encerrada) {
+      return 0;
+    }
+
+    const fim = Number(dados.fimVotacao);
+
+    if (!Number.isFinite(fim) || fim <= 0) {
+      return 0;
+    }
+
+    return Math.max(0, fim - agoraSegundos);
+  }, [resultadoConsulta, agoraSegundos]);
+
+  async function consultarProjeto() {
+    if (!idProjetoBlockchain) {
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+      setMensagemValidacao("Consultando validação do projeto...");
+
+      const consulta = await consultarValidacaoProjeto(idProjetoBlockchain);
+
+      setResultadoConsulta(consulta);
+
+      const tempoTexto = consulta.dadosVotacao
+        ? formatarTempoRestante(consulta.dadosVotacao.tempoRestanteSegundos)
+        : "votação ainda não iniciada";
+
+      setMensagemValidacao(
+        `Consulta concluída. Validador apto: ${
+          consulta.validadorApto ? "sim" : "não"
+        }. Votação aberta: ${
+          consulta.votacaoAberta ? "sim" : "não"
+        }. Total de votos: ${
+          consulta.totalVotos
+        }. Tempo restante: ${tempoTexto}.`
+      );
+    } catch (erro) {
+      setMensagemValidacao(`Erro na consulta: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function sincronizarStatusProjetoSelecionado() {
+    if (!idProjetoBlockchain) {
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+      setMensagemValidacao("Consultando estado real do projeto na blockchain...");
+
+      const estadoReal = await consultarEstadoProjetoBlockchain(
+        idProjetoBlockchain
+      );
+
+      if (estadoReal.statusSugerido !== "Desconhecido") {
+        onAtualizarStatusProjeto(
+          idProjetoBlockchain,
+          estadoReal.statusSugerido
+        );
+      }
+
+      setMensagemValidacao(
+        `Status sincronizado. Estado na blockchain: ${estadoReal.estadoCodigo}. Aprovado: ${
+          estadoReal.aprovado ? "sim" : "não"
+        }. Emitido: ${estadoReal.emitido ? "sim" : "não"}. Status: ${
+          estadoReal.statusSugerido
+        }.`
+      );
+
+      await consultarProjeto();
+    } catch (erro) {
+      setMensagemValidacao(`Erro ao sincronizar status: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function iniciarVotacaoSelecionada() {
+    if (!idProjetoBlockchain) {
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+      setMensagemValidacao("Solicitando início da votação na MetaMask...");
+
+      const resultado = await iniciarVotacaoProjeto(idProjetoBlockchain);
+
+      onAtualizarStatusProjeto(idProjetoBlockchain, "Em análise");
+
+      setMensagemValidacao(
+        `Votação iniciada para o projeto ${idProjetoBlockchain}. Hash: ${resultado.hash}.`
+      );
+
+      await consultarProjeto();
+    } catch (erro) {
+      setMensagemValidacao(`Erro ao iniciar votação: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function aprovarProjetoSelecionado() {
+    if (!projetoSelecionado || !idProjetoBlockchain) {
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+
+      setMensagemValidacao(
+        `Aprovando projeto ${idProjetoBlockchain} com ${projetoSelecionado.creditosSolicitados} créditos.`
+      );
+
+      const resultado = await votarProjetoValidacao({
+        idProjeto: idProjetoBlockchain,
+        aprovar: true,
+        creditosSugeridos: projetoSelecionado.creditosSolicitados,
+      });
+
+      setMensagemValidacao(
+        `Voto de aprovação enviado. Hash: ${resultado.hash}. Aguarde o prazo terminar para encerrar a votação.`
+      );
+
+      await consultarProjeto();
+    } catch (erro) {
+      setMensagemValidacao(`Erro ao aprovar projeto: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function rejeitarProjetoSelecionado() {
+    if (!idProjetoBlockchain) {
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+
+      setMensagemValidacao(`Rejeitando projeto ${idProjetoBlockchain}.`);
+
+      const resultado = await votarProjetoValidacao({
+        idProjeto: idProjetoBlockchain,
+        aprovar: false,
+        creditosSugeridos: 0,
+      });
+
+      setMensagemValidacao(
+        `Voto de rejeição enviado. Hash: ${resultado.hash}. Aguarde o prazo terminar para encerrar a votação.`
+      );
+
+      await consultarProjeto();
+    } catch (erro) {
+      setMensagemValidacao(`Erro ao rejeitar projeto: ${formatarErro(erro)}`);
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function encerrarVotacaoSelecionada() {
+    if (!idProjetoBlockchain) {
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
+      return;
+    }
+
+    try {
+      setExecutando(true);
+
+      setMensagemValidacao(
+        `Encerrando votação do projeto ${idProjetoBlockchain}...`
+      );
+
+      const resultado = await encerrarVotacaoProjeto(idProjetoBlockchain);
+
+      const estadoReal = await consultarEstadoProjetoBlockchain(
+        idProjetoBlockchain
+      );
+
+      if (estadoReal.statusSugerido !== "Desconhecido") {
+        onAtualizarStatusProjeto(
+          idProjetoBlockchain,
+          estadoReal.statusSugerido
+        );
+      }
+
+      setMensagemValidacao(
+        `Votação encerrada. Hash: ${resultado.hash}. Estado na blockchain: ${estadoReal.estadoCodigo}. Aprovado: ${
+          estadoReal.aprovado ? "sim" : "não"
+        }. Status atualizado: ${estadoReal.statusSugerido}.`
+      );
+
+      await consultarProjeto();
+    } catch (erro) {
+      setMensagemValidacao(
+        `Erro ao encerrar votação: ${formatarErro(
+          erro
+        )}. Se a mensagem indicar votação ainda aberta, aguarde o fim do prazo exibido na tela.`
+      );
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  return (
+    <section className="form-card">
+      <div className="section-title">
+        <div>
+          <span className="badge">Validação MVP</span>
+          <h3>Projetos pendentes de validação</h3>
+          <p>
+            Escolha um projeto cadastrado, inicie a votação, aprove ou rejeite.
+            No MVP, créditos aprovados são iguais aos créditos solicitados.
+          </p>
+        </div>
+      </div>
+
+      {projetosValidaveis.length === 0 ? (
+        <div className="empty-state">
+          Nenhum projeto com ID blockchain disponível para validação.
+        </div>
+      ) : (
+        <>
+          <div className="projetos-table-wrap">
+            <table className="projetos-table">
+              <thead>
+                <tr>
+                  <th>ID blockchain</th>
+                  <th>Projeto</th>
+                  <th>Tipo</th>
+                  <th>Localização</th>
+                  <th>Créditos</th>
+                  <th>Status</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {projetosValidaveis.map((projeto) => (
+                  <tr key={projeto.id}>
+                    <td>{projeto.idProjetoBlockchain}</td>
+                    <td>
+                      <strong>{projeto.nome}</strong>
+                      <span>{projeto.descricao}</span>
+                    </td>
+                    <td>{projeto.tipo}</td>
+                    <td>{projeto.localizacao}</td>
+                    <td>{projeto.creditosSolicitados}</td>
+                    <td>
+                      <span className="status-pill">{projeto.status}</span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn-secondary"
+                        type="button"
+                        onClick={() => {
+                          setProjetoSelecionadoId(projeto.id);
+                          setResultadoConsulta(null);
+                          setMensagemValidacao(
+                            `Projeto ${projeto.idProjetoBlockchain} selecionado.`
+                          );
+                        }}
+                      >
+                        Selecionar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {projetoSelecionado && (
+            <div className="status-operacao">
+              <div className="section-title">
+                <div>
+                  <span className="badge">Projeto selecionado</span>
+                  <h3>{projetoSelecionado.nome}</h3>
+                  <p>
+                    ID blockchain: {projetoSelecionado.idProjetoBlockchain} |
+                    Créditos solicitados: {projetoSelecionado.creditosSolicitados}
+                  </p>
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  disabled={executando}
+                  onClick={() => void consultarProjeto()}
+                >
+                  Verificar aptidão
+                </button>
+
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  disabled={executando}
+                  onClick={() => void sincronizarStatusProjetoSelecionado()}
+                >
+                  Sincronizar status
+                </button>
+
+                <button
+                  className="btn-primary"
+                  type="button"
+                  disabled={executando}
+                  onClick={() => void iniciarVotacaoSelecionada()}
+                >
+                  Iniciar votação
+                </button>
+
+                <button
+                  className="btn-primary"
+                  type="button"
+                  disabled={executando}
+                  onClick={() => void aprovarProjetoSelecionado()}
+                >
+                  Aprovar
+                </button>
+
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  disabled={executando}
+                  onClick={() => void rejeitarProjetoSelecionado()}
+                >
+                  Rejeitar
+                </button>
+
+                <button
+                  className="btn-secondary"
+                  type="button"
+                  disabled={executando}
+                  onClick={() => void encerrarVotacaoSelecionada()}
+                >
+                  Encerrar votação
+                </button>
+              </div>
+
+              {resultadoConsulta && (
+                <div className="status-grid">
+                  <div>
+                    <span>Validador apto</span>
+                    <strong>{resultadoConsulta.validadorApto ? "Sim" : "Não"}</strong>
+                  </div>
+
+                  <div>
+                    <span>Votação aberta</span>
+                    <strong>{resultadoConsulta.votacaoAberta ? "Sim" : "Não"}</strong>
+                  </div>
+
+                  <div>
+                    <span>Total de votos</span>
+                    <strong>{resultadoConsulta.totalVotos}</strong>
+                  </div>
+
+                  {resultadoConsulta.dadosVotacao && (
+                    <>
+                      <div>
+                        <span>Início da votação</span>
+                        <strong>
+                          {formatarDataHoraUnix(
+                            resultadoConsulta.dadosVotacao.inicioVotacao
+                          )}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Fim da votação</span>
+                        <strong>
+                          {formatarDataHoraUnix(
+                            resultadoConsulta.dadosVotacao.fimVotacao
+                          )}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Tempo restante</span>
+                        <strong>{formatarTempoRestante(tempoRestanteTela)}</strong>
+                      </div>
+
+                      <div>
+                        <span>Pode encerrar?</span>
+                        <strong>
+                          {resultadoConsulta.dadosVotacao.encerrada
+                            ? "Já encerrada"
+                            : tempoRestanteTela <= 0
+                            ? "Sim"
+                            : "Ainda não"}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Votos de aprovação</span>
+                        <strong>
+                          {resultadoConsulta.dadosVotacao.votosAprovacao}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Votos de rejeição</span>
+                        <strong>
+                          {resultadoConsulta.dadosVotacao.votosRejeicao}
+                        </strong>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {mensagemValidacao && (
+                <div className="status-message">{mensagemValidacao}</div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function FormularioProjeto({
+  onSalvar,
+  onCancelar,
+}: {
+  onSalvar: (dados: DadosNovoProjeto) => void;
+  onCancelar: () => void;
+}) {
+  const [nome, setNome] = useState("");
+  const [tipo, setTipo] = useState("Energia Solar");
+  const [localizacao, setLocalizacao] = useState("");
+  const [creditosSolicitados, setCreditosSolicitados] = useState("");
+  const [uriEvidencias, setUriEvidencias] = useState("");
+  const [inicioPeriodoReferencia, setInicioPeriodoReferencia] = useState("");
+  const [fimPeriodoReferencia, setFimPeriodoReferencia] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [erro, setErro] = useState("");
+
+  function enviarProjeto(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+
+    const creditosNumericos = Number(creditosSolicitados);
+
+    if (!nome.trim()) {
+      setErro("Informe o nome do projeto.");
+      return;
+    }
+
+    if (!localizacao.trim()) {
+      setErro("Informe a localização do projeto.");
+      return;
+    }
+
+    if (!descricao.trim()) {
+      setErro("Informe uma descrição técnica resumida do projeto.");
+      return;
+    }
+
+    if (!uriEvidencias.trim()) {
+      setErro("Informe a URI das evidências.");
+      return;
+    }
+
+    if (!inicioPeriodoReferencia) {
+      setErro("Informe o início do período de referência.");
+      return;
+    }
+
+    if (!fimPeriodoReferencia) {
+      setErro("Informe o fim do período de referência.");
+      return;
+    }
+
+    if (
+      new Date(`${inicioPeriodoReferencia}T00:00:00`).getTime() >=
+      new Date(`${fimPeriodoReferencia}T00:00:00`).getTime()
+    ) {
+      setErro("O início do período deve ser anterior ao fim do período.");
+      return;
+    }
+
+    if (!Number.isFinite(creditosNumericos) || creditosNumericos <= 0) {
+      setErro("Informe uma quantidade de créditos solicitados maior que zero.");
+      return;
+    }
+
+    onSalvar({
+      nome: nome.trim(),
+      tipo,
+      localizacao: localizacao.trim(),
+      creditosSolicitados: creditosNumericos,
+      descricao: descricao.trim(),
+      uriEvidencias: uriEvidencias.trim(),
+      inicioPeriodoReferencia,
+      fimPeriodoReferencia,
+    });
+
+    setErro("");
+    setNome("");
+    setTipo("Energia Solar");
+    setLocalizacao("");
+    setCreditosSolicitados("");
+    setUriEvidencias("");
+    setInicioPeriodoReferencia("");
+    setFimPeriodoReferencia("");
+    setDescricao("");
+  }
+
+  return (
+    <section className="form-card">
+      <div className="section-title">
+        <div>
+          <span className="badge">Proponente</span>
+          <h3>Novo projeto de crédito de carbono</h3>
+          <p>
+            Cadastre as informações iniciais do projeto para posterior análise
+            pelos validadores.
+          </p>
+        </div>
+      </div>
+
+      {erro && <div className="alerta">{erro}</div>}
+
+      <form onSubmit={enviarProjeto}>
+        <div className="form-grid">
+          <label>
+            Nome do projeto
+            <input
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Exemplo: Usina Solar Comunitária"
+            />
+          </label>
+
+          <label>
+            Tipo do projeto
+            <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
+              <option>Energia Solar</option>
+              <option>Energia Eólica</option>
+              <option>Reflorestamento</option>
+              <option>Conservação Florestal</option>
+              <option>Biodigestor</option>
+              <option>Eficiência Energética</option>
+              <option>Reciclagem</option>
+              <option>Outro</option>
+            </select>
+          </label>
+
+          <label>
+            Localização
+            <input
+              value={localizacao}
+              onChange={(e) => setLocalizacao(e.target.value)}
+              placeholder="Município e UF"
+            />
+          </label>
+
+          <label>
+            Créditos solicitados
+            <input
+              value={creditosSolicitados}
+              onChange={(e) => setCreditosSolicitados(e.target.value)}
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Exemplo: 120"
+            />
+          </label>
+
+          <label>
+            Início do período de referência
+            <input
+              value={inicioPeriodoReferencia}
+              onChange={(e) => setInicioPeriodoReferencia(e.target.value)}
+              type="date"
+            />
+          </label>
+
+          <label>
+            Fim do período de referência
+            <input
+              value={fimPeriodoReferencia}
+              onChange={(e) => setFimPeriodoReferencia(e.target.value)}
+              type="date"
+            />
+          </label>
+        </div>
+
+        <label className="full-field">
+          URI das evidências
+          <input
+            value={uriEvidencias}
+            onChange={(e) => setUriEvidencias(e.target.value)}
+            placeholder="Exemplo: ipfs://carbonledger/evidencias/projeto-001.json"
+          />
+        </label>
+
+        <label className="full-field">
+          Descrição técnica resumida
+          <textarea
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            rows={5}
+            placeholder="Descreva a metodologia, a fonte de redução ou remoção de emissões e a justificativa ambiental."
+          />
+        </label>
+
+        <div className="form-actions">
+          <button className="btn-secondary" type="button" onClick={onCancelar}>
+            Cancelar
+          </button>
+
+          <button className="btn-primary" type="submit">
+            Enviar para validação
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function ListaProjetos({ projetos }: { projetos: ProjetoCarbono[] }) {
+  return (
+    <section className="form-card">
+      <div className="section-title">
+        <div>
+          <span className="badge">Projetos</span>
+          <h3>Meus projetos cadastrados</h3>
+          <p>
+            Projetos submetidos pelo proponente e seus respectivos estados de
+            validação.
+          </p>
+        </div>
+      </div>
+
+      {projetos.length === 0 ? (
+        <div className="empty-state">
+          Nenhum projeto cadastrado por este proponente.
+        </div>
+      ) : (
+        <div className="projetos-table-wrap">
+          <table className="projetos-table">
+            <thead>
+              <tr>
+                <th>ID blockchain</th>
+                <th>Projeto</th>
+                <th>Tipo</th>
+                <th>Localização</th>
+                <th>Créditos</th>
+                <th>Status</th>
+                <th>Transação</th>
+                <th>Cadastro</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {projetos.map((projeto) => (
+                <tr key={projeto.id}>
+                  <td>{projeto.idProjetoBlockchain ?? "Não capturado"}</td>
+                  <td>
+                    <strong>{projeto.nome}</strong>
+                    <span>{projeto.descricao}</span>
+                  </td>
+                  <td>{projeto.tipo}</td>
+                  <td>{projeto.localizacao}</td>
+                  <td>{projeto.creditosSolicitados}</td>
+                  <td>
+                    <span className="status-pill">{projeto.status}</span>
+                  </td>
+                  <td>
+                    {projeto.hashTransacao ? (
+                      <span>{encurtarEndereco(projeto.hashTransacao)}</span>
+                    ) : (
+                      <span>Não disponível</span>
+                    )}
+                  </td>
+                  <td>{projeto.criadoEm}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function StatusOperacao({ operacao }: { operacao: OperacaoWeb3 }) {
+  return (
+    <section className="status-operacao">
+      <div className="section-title">
+        <div>
+          <span className="badge">Web3</span>
+          <h3>Status da operação</h3>
+          <p>Acompanhamento da submissão do projeto na blockchain.</p>
+        </div>
+      </div>
+
+      <div className="status-grid">
+        <div>
+          <span>Modo</span>
+          <strong>{operacao.modo}</strong>
+        </div>
+
+        <div>
+          <span>Status</span>
+          <strong>{operacao.status}</strong>
+        </div>
+
+        <div>
+          <span>Contrato</span>
+          <strong>{operacao.contrato || "Não configurado"}</strong>
+        </div>
+
+        <div>
+          <span>Conta</span>
+          <strong>{operacao.conta || "Não conectada"}</strong>
+        </div>
+
+        <div>
+          <span>Rede</span>
+          <strong>{operacao.rede || "Não identificada"}</strong>
+        </div>
+
+        <div>
+          <span>Hash da transação</span>
+          <strong>{operacao.hash || "Ainda não gerado"}</strong>
+        </div>
+      </div>
+
+      <div className="status-message">{operacao.mensagem}</div>
+    </section>
+  );
+}
+
+function Card({
+  titulo,
+  children,
+}: {
+  titulo: string;
+  children: ReactNode;
+}) {
+  return (
+    <article className="painel">
+      <h3>{titulo}</h3>
+      {children}
+    </article>
+  );
+}
+
+export default App;
