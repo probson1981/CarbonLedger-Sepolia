@@ -14,6 +14,26 @@ import {
   consultarSaldoLote,
   emitirCreditosProjetoAprovado,
 } from "./contracts/projectCredit";
+import {
+  aprovarMarketplaceParaCreditos,
+  calcularCompraOferta,
+  cancelarOfertaCreditos,
+  comprarCreditosOferta,
+  consultarSaldoCreditoMarketplace,
+  criarOfertaCreditos,
+  listarOfertas,
+  verificarMarketplaceAprovado,
+  type OfertaMarketplace,
+  type ValoresCompraOferta,
+} from "./contracts/projectMarketplace";
+import {
+  aposentarCreditosCarbono,
+  consultarResumoAposentadoriasComprador,
+  consultarTaxaAposentadoria,
+  consultarTotalAposentadoPorLote,
+  type ResumoAposentadoriasComprador,
+  type TaxaAposentadoria,
+} from "./contracts/projectRetirement";
 import "./App.css";
 
 type PerfilUsuario =
@@ -36,7 +56,11 @@ type AcaoPainel =
   | "novo-projeto"
   | "meus-projetos"
   | "validacao-projetos"
-  | "emissao-creditos";
+  | "emissao-creditos"
+  | "ofertar-creditos"
+  | "comprar-creditos"
+  | "aposentar-creditos"
+  | "certificados";
 
 type StatusOperacaoWeb3 =
   | "Aguardando ação"
@@ -146,6 +170,18 @@ type LoteCreditoTela = {
   anoReferencia: string;
   ativo: boolean;
   loteEmitido: boolean;
+};
+
+type LoteCreditoCompradorTela = {
+  idLote: string;
+  saldoComprador: string;
+  totalOfertadoMarketplace: string;
+  quantidadeDisponivelMarketplace: string;
+  quantidadeOfertas: number;
+  ultimoPrecoPorCreditoETH: string;
+  totalAposentadoNoLote: string;
+  estados: string;
+  possuiSaldo: boolean;
 };
 
 function obterEthereum(): EthereumProviderComEventos | undefined {
@@ -983,7 +1019,7 @@ function App() {
 
                 {usuariosDemo.map((item) => (
                   <span key={item.usuario}>
-                    {item.usuario} / {item.senha}
+                    {item.usuario} — {item.senha}
                     <button
                       className="btn-secondary"
                       type="button"
@@ -1148,16 +1184,27 @@ function PainelPorPerfil({
           </Card>
 
           <Card titulo="Ofertar Créditos">
-            <p>Criar ofertas no marketplace após aprovação e emissão dos créditos.</p>
-            <button className="btn-secondary" type="button">
-              Criar oferta
+            <p>
+              Aprovar o marketplace e criar oferta de venda para créditos já
+              emitidos.
+            </p>
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={() => setAcaoPainel("ofertar-creditos")}
+            >
+              Ofertar créditos
             </button>
           </Card>
 
           <Card titulo="Vendas">
             <p>Acompanhar créditos vendidos e ofertas abertas.</p>
-            <button className="btn-secondary" type="button">
-              Ver vendas
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={() => setAcaoPainel("ofertar-creditos")}
+            >
+              Ver ofertas
             </button>
           </Card>
         </div>
@@ -1178,6 +1225,10 @@ function PainelPorPerfil({
             <ListaProjetos projetos={projetosDoProponente} />
             <StatusOperacao operacao={operacaoWeb3} />
           </>
+        )}
+
+        {acaoPainel === "ofertar-creditos" && (
+          <PainelOfertaCreditos projetos={projetosDoProponente} />
         )}
       </>
     );
@@ -1228,1260 +1279,718 @@ function PainelPorPerfil({
 
   if (perfil === "comprador") {
     return (
-      <div className="grid">
-        <Card titulo="Marketplace">
-          <p>Comprar créditos de carbono ofertados por proponentes.</p>
-          <button className="btn-primary" type="button">
-            Comprar créditos
-          </button>
-        </Card>
+      <>
+        <div className="grid">
+          <Card titulo="Marketplace">
+            <p>Comprar créditos de carbono ofertados por proponentes.</p>
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={() => setAcaoPainel("comprar-creditos")}
+            >
+              Comprar créditos
+            </button>
+          </Card>
 
-        <Card titulo="Meus Créditos">
-          <p>Consultar créditos adquiridos e disponíveis para aposentadoria.</p>
-          <button className="btn-secondary" type="button">
-            Ver saldo
-          </button>
-        </Card>
+          <Card titulo="Meus Créditos">
+            <p>Consultar créditos adquiridos e disponíveis para aposentadoria.</p>
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={() => setAcaoPainel("aposentar-creditos")}
+            >
+              Ver saldo
+            </button>
+          </Card>
 
-        <Card titulo="Aposentar Créditos">
-          <p>Queimar créditos, registrar compensação e emitir certificado NFT.</p>
-          <button className="btn-primary" type="button">
-            Aposentar
-          </button>
-        </Card>
+          <Card titulo="Aposentar Créditos">
+            <p>Queimar créditos, registrar compensação e emitir certificado NFT.</p>
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={() => setAcaoPainel("aposentar-creditos")}
+            >
+              Aposentar
+            </button>
+          </Card>
 
-        <Card titulo="Certificados">
-          <p>Consultar NFTs de compensação emitidos em nome da organização.</p>
-          <button className="btn-secondary" type="button">
-            Ver certificados
-          </button>
-        </Card>
-      </div>
+          <Card titulo="Certificados">
+            <p>Consultar NFTs de compensação emitidos em nome da organização.</p>
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={() => setAcaoPainel("certificados")}
+            >
+              Ver certificados
+            </button>
+          </Card>
+        </div>
+
+        {acaoPainel === "comprar-creditos" && <PainelCompraCreditos />}
+
+        {(acaoPainel === "aposentar-creditos" ||
+          acaoPainel === "certificados") && (
+          <PainelAposentadoriaCertificados focoInicial={acaoPainel} />
+        )}
+      </>
     );
   }
 
   return null;
 }
 
-function PainelEmissaoCreditos({
-  projetos,
-  onAtualizarStatusProjeto,
+function PainelAposentadoriaCertificados({
+  focoInicial,
 }: {
-  projetos: ProjetoCarbono[];
-  onAtualizarStatusProjeto: (
-    idProjetoBlockchain: string,
-    status: StatusProjeto
-  ) => void;
+  focoInicial: "aposentar-creditos" | "certificados";
 }) {
-  const [projetoSelecionadoId, setProjetoSelecionadoId] = useState("");
-  const [anoReferencia, setAnoReferencia] = useState(obterAnoAtual());
   const [idLote, setIdLote] = useState("");
+  const [quantidade, setQuantidade] = useState("");
+  const [motivo, setMotivo] = useState(
+    "Compensação voluntária de emissões de carbono"
+  );
+  const [uriRelatorio, setUriRelatorio] = useState(
+    "ipfs://carbonledger/relatorios/relatorio-compensacao.json"
+  );
+  const [uriCertificado, setUriCertificado] = useState(
+    "ipfs://carbonledger/certificados/certificado-compensacao.json"
+  );
+  const [saldoLote, setSaldoLote] = useState("");
+  const [taxaAposentadoria, setTaxaAposentadoria] =
+    useState<TaxaAposentadoria | null>(null);
+  const [resumo, setResumo] =
+    useState<ResumoAposentadoriasComprador | null>(null);
+  const [lotesCredito, setLotesCredito] = useState<LoteCreditoCompradorTela[]>(
+    []
+  );
   const [executando, setExecutando] = useState(false);
-  const [mensagemEmissao, setMensagemEmissao] = useState("");
-  const [resumoEmissao, setResumoEmissao] =
-    useState<ResumoProjetoEmissaoTela | null>(null);
-  const [loteEmitido, setLoteEmitido] = useState<LoteCreditoTela | null>(null);
-  const [saldoProponente, setSaldoProponente] = useState("");
+  const [mensagemAposentadoria, setMensagemAposentadoria] = useState("");
 
-  const projetosAguardandoEmissao = projetos.filter(
-    (projeto) =>
-      Boolean(projeto.idProjetoBlockchain) && projeto.status === "Aprovado"
-  );
+  const lotesAdquiridos = lotesCredito.filter((lote) => lote.possuiSaldo);
+  const lotesSemSaldo = lotesCredito.filter((lote) => !lote.possuiSaldo);
 
-  const projetosComCreditosEmitidos = projetos.filter(
-    (projeto) =>
-      Boolean(projeto.idProjetoBlockchain) &&
-      projeto.status === "Créditos emitidos"
-  );
+  async function carregarLotesCreditoComprador(): Promise<
+    LoteCreditoCompradorTela[]
+  > {
+    const ofertas = await listarOfertas({
+      apenasDisponiveis: false,
+      limite: 100,
+    });
 
-  const projetosAdministraveis = [
-    ...projetosAguardandoEmissao,
-    ...projetosComCreditosEmitidos,
-  ];
+    const mapaLotes = new Map<
+      string,
+      {
+        idLote: string;
+        totalOfertadoMarketplace: bigint;
+        quantidadeDisponivelMarketplace: bigint;
+        quantidadeOfertas: number;
+        ultimoPrecoPorCreditoETH: string;
+        estados: Set<string>;
+      }
+    >();
 
-  const projetoSelecionado = projetosAdministraveis.find(
-    (projeto) => projeto.id === projetoSelecionadoId
-  );
+    for (const oferta of ofertas) {
+      const existente = mapaLotes.get(oferta.idLote);
 
-  const idProjetoBlockchain = projetoSelecionado?.idProjetoBlockchain ?? "";
+      if (!existente) {
+        mapaLotes.set(oferta.idLote, {
+          idLote: oferta.idLote,
+          totalOfertadoMarketplace: BigInt(oferta.quantidadeTotal),
+          quantidadeDisponivelMarketplace: BigInt(
+            oferta.quantidadeDisponivel
+          ),
+          quantidadeOfertas: 1,
+          ultimoPrecoPorCreditoETH: oferta.precoPorCreditoETH,
+          estados: new Set([oferta.estadoOfertaTexto]),
+        });
 
-  const projetoSelecionadoAguardandoEmissao =
-    projetoSelecionado?.status === "Aprovado";
+        continue;
+      }
 
-  const projetoSelecionadoJaEmitido =
-    projetoSelecionado?.status === "Créditos emitidos";
+      existente.totalOfertadoMarketplace += BigInt(oferta.quantidadeTotal);
+      existente.quantidadeDisponivelMarketplace += BigInt(
+        oferta.quantidadeDisponivel
+      );
+      existente.quantidadeOfertas += 1;
+      existente.ultimoPrecoPorCreditoETH = oferta.precoPorCreditoETH;
+      existente.estados.add(oferta.estadoOfertaTexto);
+    }
 
-  function selecionarProjetoParaEmissao(projeto: ProjetoCarbono) {
-    setProjetoSelecionadoId(projeto.id);
-    setResumoEmissao(null);
-    setLoteEmitido(null);
-    setSaldoProponente("");
+    const lotes = Array.from(mapaLotes.values());
 
-    const loteSugerido = projeto.idProjetoBlockchain
-      ? sugerirIdLote(projeto.idProjetoBlockchain)
-      : "";
+    const consultas = lotes.map(async (lote) => {
+      const [saldoComprador, totalAposentadoNoLote] = await Promise.all([
+        consultarSaldoCreditoMarketplace({
+          idLote: lote.idLote,
+        }),
+        consultarTotalAposentadoPorLote(lote.idLote),
+      ]);
 
-    setIdLote(loteSugerido);
+      return {
+        idLote: lote.idLote,
+        saldoComprador,
+        totalOfertadoMarketplace: lote.totalOfertadoMarketplace.toString(),
+        quantidadeDisponivelMarketplace:
+          lote.quantidadeDisponivelMarketplace.toString(),
+        quantidadeOfertas: lote.quantidadeOfertas,
+        ultimoPrecoPorCreditoETH: lote.ultimoPrecoPorCreditoETH,
+        totalAposentadoNoLote,
+        estados: Array.from(lote.estados).join(", "),
+        possuiSaldo: BigInt(saldoComprador) > 0n,
+      };
+    });
 
-    setMensagemEmissao(
-      `Projeto ${projeto.idProjetoBlockchain} selecionado. Status atual: ${projeto.status}.`
+    const resultado = await Promise.all(consultas);
+
+    return resultado.sort((a, b) => Number(a.idLote) - Number(b.idLote));
+  }
+
+  async function atualizarResumo() {
+    try {
+      setExecutando(true);
+      setMensagemAposentadoria(
+        "Consultando taxa, saldos, lotes, aposentadorias e certificados..."
+      );
+
+      const [taxa, resumoAtual, lotesAtualizados] = await Promise.all([
+        consultarTaxaAposentadoria(),
+        consultarResumoAposentadoriasComprador({ limite: 50 }),
+        carregarLotesCreditoComprador(),
+      ]);
+
+      setTaxaAposentadoria(taxa);
+      setResumo(resumoAtual);
+      setLotesCredito(lotesAtualizados);
+
+      const totalComSaldo = lotesAtualizados.filter(
+        (lote) => lote.possuiSaldo
+      ).length;
+
+      setMensagemAposentadoria(
+        `Consulta concluída. Taxa de aposentadoria: ${taxa.taxaETH} ETH. Lotes conhecidos: ${lotesAtualizados.length}. Lotes com saldo do comprador: ${totalComSaldo}. Total compensado: ${resumoAtual.totalCompensado}.`
+      );
+    } catch (erro) {
+      setMensagemAposentadoria(
+        `Erro ao consultar resumo: ${formatarErro(erro)}`
+      );
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  async function atualizarSomenteLotes() {
+    try {
+      setExecutando(true);
+      setMensagemAposentadoria(
+        "Consultando lotes conhecidos e saldos do comprador..."
+      );
+
+      const lotesAtualizados = await carregarLotesCreditoComprador();
+
+      setLotesCredito(lotesAtualizados);
+
+      const totalComSaldo = lotesAtualizados.filter(
+        (lote) => lote.possuiSaldo
+      ).length;
+
+      setMensagemAposentadoria(
+        `Lotes atualizados. Lotes conhecidos: ${lotesAtualizados.length}. Lotes adquiridos pelo comprador: ${totalComSaldo}.`
+      );
+    } catch (erro) {
+      setMensagemAposentadoria(
+        `Erro ao consultar lotes: ${formatarErro(erro)}`
+      );
+    } finally {
+      setExecutando(false);
+    }
+  }
+
+  function selecionarLoteParaAposentadoria(lote: LoteCreditoCompradorTela) {
+    setIdLote(lote.idLote);
+    setSaldoLote(lote.saldoComprador);
+    setQuantidade("");
+
+    setMensagemAposentadoria(
+      `Lote ${lote.idLote} selecionado para aposentadoria. Saldo disponível do comprador: ${lote.saldoComprador}.`
     );
   }
 
-  async function consultarProjetoParaEmissao() {
-    if (!idProjetoBlockchain) {
-      setMensagemEmissao("Selecione um projeto com ID blockchain.");
+  async function consultarSaldoDoLote() {
+    if (!idLote) {
+      setMensagemAposentadoria("Informe o ID do lote para consultar o saldo.");
       return;
     }
 
     try {
       setExecutando(true);
-      setMensagemEmissao("Consultando projeto na blockchain...");
+      setMensagemAposentadoria("Consultando saldo do comprador no lote...");
 
-      const resumo = await consultarResumoProjetoParaEmissao(idProjetoBlockchain);
+      const saldo = await consultarSaldoCreditoMarketplace({ idLote });
 
-      setResumoEmissao(resumo);
+      setSaldoLote(saldo);
 
-      const loteSugerido = sugerirIdLote(idProjetoBlockchain);
-      setIdLote((atual) => atual || loteSugerido);
-
-      if (resumo.emitido) {
-        onAtualizarStatusProjeto(idProjetoBlockchain, "Créditos emitidos");
-      }
-
-      setMensagemEmissao(
-        `Consulta concluída. Aprovado: ${
-          resumo.aprovado ? "sim" : "não"
-        }. Emitido: ${resumo.emitido ? "sim" : "não"}. Créditos aprovados: ${
-          resumo.creditosAprovados
-        }. Proponente: ${encurtarEndereco(resumo.proponente)}.`
-      );
+      setMensagemAposentadoria(`Saldo do comprador no lote ${idLote}: ${saldo}.`);
     } catch (erro) {
-      setMensagemEmissao(`Erro na consulta: ${formatarErro(erro)}`);
+      setMensagemAposentadoria(`Erro ao consultar saldo: ${formatarErro(erro)}`);
     } finally {
       setExecutando(false);
     }
   }
 
-  async function emitirCreditosSelecionado() {
-    if (!projetoSelecionado || !idProjetoBlockchain) {
-      setMensagemEmissao("Selecione um projeto aprovado com ID blockchain.");
+  async function aposentarCreditosSelecionados() {
+    if (!idLote) {
+      setMensagemAposentadoria("Selecione ou informe o ID do lote.");
       return;
     }
 
-    if (!projetoSelecionadoAguardandoEmissao) {
-      setMensagemEmissao(
-        "Este projeto não está aguardando emissão. Apenas projetos com status Aprovado podem emitir créditos."
+    if (!quantidade || Number(quantidade) <= 0) {
+      setMensagemAposentadoria("Informe uma quantidade válida para aposentadoria.");
+      return;
+    }
+
+    if (saldoLote && BigInt(saldoLote) < BigInt(quantidade)) {
+      setMensagemAposentadoria(
+        `Saldo insuficiente no lote ${idLote}. Saldo: ${saldoLote}. Quantidade solicitada: ${quantidade}.`
       );
+      return;
+    }
+
+    if (!motivo.trim()) {
+      setMensagemAposentadoria("Informe o motivo da aposentadoria.");
+      return;
+    }
+
+    if (!uriRelatorio.trim()) {
+      setMensagemAposentadoria("Informe a URI do relatório.");
+      return;
+    }
+
+    if (!uriCertificado.trim()) {
+      setMensagemAposentadoria("Informe a URI do certificado.");
       return;
     }
 
     try {
       setExecutando(true);
-
-      const loteFinal = idLote || sugerirIdLote(idProjetoBlockchain);
-
-      setMensagemEmissao(
-        `Solicitando emissão dos créditos do projeto ${idProjetoBlockchain} na MetaMask...`
+      setMensagemAposentadoria(
+        "Enviando aposentadoria de créditos para a MetaMask..."
       );
 
-      const resultado = await emitirCreditosProjetoAprovado({
-        idProjeto: idProjetoBlockchain,
-        idLote: loteFinal,
-        anoReferencia,
+      const resultado = await aposentarCreditosCarbono({
+        idLote,
+        quantidade,
+        motivo,
+        uriRelatorio,
+        uriCertificado,
       });
 
-      onAtualizarStatusProjeto(idProjetoBlockchain, "Créditos emitidos");
+      const [saldoAtualizado, resumoAtualizado, taxaAtualizada, lotesAtualizados] =
+        await Promise.all([
+          consultarSaldoCreditoMarketplace({ idLote: resultado.idLote }),
+          consultarResumoAposentadoriasComprador({ limite: 50 }),
+          consultarTaxaAposentadoria(),
+          carregarLotesCreditoComprador(),
+        ]);
 
-      const [resumoAtualizado, lote] = await Promise.all([
-        consultarResumoProjetoParaEmissao(idProjetoBlockchain),
-        consultarLoteCredito(resultado.idLote),
-      ]);
+      setSaldoLote(saldoAtualizado);
+      setResumo(resumoAtualizado);
+      setTaxaAposentadoria(taxaAtualizada);
+      setLotesCredito(lotesAtualizados);
 
-      let saldo = "";
-
-      if (resumoAtualizado.proponente) {
-        saldo = await consultarSaldoLote({
-          carteira: resumoAtualizado.proponente,
-          idLote: resultado.idLote,
-        });
-      }
-
-      setResumoEmissao(resumoAtualizado);
-      setLoteEmitido(lote);
-      setSaldoProponente(saldo);
-
-      setMensagemEmissao(
-        `Créditos emitidos com sucesso. Hash: ${resultado.hash}. Lote: ${resultado.idLote}. Ano: ${resultado.anoReferencia}.`
+      setMensagemAposentadoria(
+        `Créditos aposentados com sucesso. Hash: ${resultado.hash}. Aposentadoria: ${resultado.idAposentadoria}. Certificado NFT: ${resultado.idCertificado}. Saldo restante no lote ${resultado.idLote}: ${saldoAtualizado}.`
       );
     } catch (erro) {
-      setMensagemEmissao(`Erro ao emitir créditos: ${formatarErro(erro)}`);
+      setMensagemAposentadoria(
+        `Erro ao aposentar créditos: ${formatarErro(erro)}`
+      );
     } finally {
       setExecutando(false);
     }
   }
-
-  async function consultarLoteSelecionado() {
-    const loteFinal = idLote || idProjetoBlockchain;
-
-    if (!loteFinal) {
-      setMensagemEmissao("Informe ou selecione um ID de lote.");
-      return;
-    }
-
-    try {
-      setExecutando(true);
-
-      const lote = await consultarLoteCredito(loteFinal);
-
-      setLoteEmitido(lote);
-
-      let saldo = "";
-
-      const proponenteConsulta =
-        resumoEmissao?.proponente ||
-        (idProjetoBlockchain
-          ? (await consultarResumoProjetoParaEmissao(idProjetoBlockchain))
-              .proponente
-          : "");
-
-      if (proponenteConsulta) {
-        saldo = await consultarSaldoLote({
-          carteira: proponenteConsulta,
-          idLote: loteFinal,
-        });
-
-        setSaldoProponente(saldo);
-      }
-
-      setMensagemEmissao(
-        `Lote consultado. Emitido: ${
-          lote.loteEmitido ? "sim" : "não"
-        }. Quantidade emitida: ${lote.quantidadeEmitida}. Saldo do proponente: ${
-          saldo || "não consultado"
-        }.`
-      );
-    } catch (erro) {
-      setMensagemEmissao(`Erro ao consultar lote: ${formatarErro(erro)}`);
-    } finally {
-      setExecutando(false);
-    }
-  }
-
-  return (
-    <section className="form-card">
-      <div className="section-title">
-        <div>
-          <span className="badge">Administração</span>
-          <h3>Emissão de créditos de carbono</h3>
-          <p>
-            Acompanhe projetos aprovados aguardando emissão e projetos que já
-            tiveram créditos ERC-1155 emitidos.
-          </p>
-        </div>
-      </div>
-
-      {projetosAdministraveis.length === 0 ? (
-        <div className="empty-state">
-          Nenhum projeto aprovado ou com créditos emitidos disponível para
-          acompanhamento.
-        </div>
-      ) : (
-        <>
-          <div className="section-title">
-            <div>
-              <span className="badge">Fila de emissão</span>
-              <h3>Projetos aprovados aguardando emissão</h3>
-              <p>
-                Estes projetos já foram aprovados pelos validadores, mas ainda
-                não tiveram o lote ERC-1155 emitido.
-              </p>
-            </div>
-          </div>
-
-          {projetosAguardandoEmissao.length === 0 ? (
-            <div className="empty-state">
-              Nenhum projeto aguardando emissão no momento.
-            </div>
-          ) : (
-            <div className="projetos-table-wrap">
-              <table className="projetos-table">
-                <thead>
-                  <tr>
-                    <th>ID blockchain</th>
-                    <th>Projeto</th>
-                    <th>Tipo</th>
-                    <th>Localização</th>
-                    <th>Créditos solicitados</th>
-                    <th>Status</th>
-                    <th>Ação</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {projetosAguardandoEmissao.map((projeto) => (
-                    <tr key={projeto.id}>
-                      <td>{projeto.idProjetoBlockchain}</td>
-                      <td>
-                        <strong>{projeto.nome}</strong>
-                        <span>{projeto.descricao}</span>
-                      </td>
-                      <td>{projeto.tipo}</td>
-                      <td>{projeto.localizacao}</td>
-                      <td>{projeto.creditosSolicitados}</td>
-                      <td>
-                        <span className="status-pill">{projeto.status}</span>
-                      </td>
-                      <td>
-                        <button
-                          className="btn-secondary"
-                          type="button"
-                          onClick={() => selecionarProjetoParaEmissao(projeto)}
-                        >
-                          Selecionar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <div className="section-title">
-            <div>
-              <span className="badge">Histórico</span>
-              <h3>Projetos com créditos emitidos</h3>
-              <p>
-                Estes projetos já tiveram lote de créditos criado. Aqui faz
-                sentido consultar lote, quantidade emitida e saldo do proponente.
-              </p>
-            </div>
-          </div>
-
-          {projetosComCreditosEmitidos.length === 0 ? (
-            <div className="empty-state">
-              Nenhum projeto com créditos emitidos ainda.
-            </div>
-          ) : (
-            <div className="projetos-table-wrap">
-              <table className="projetos-table">
-                <thead>
-                  <tr>
-                    <th>ID blockchain</th>
-                    <th>Projeto</th>
-                    <th>Tipo</th>
-                    <th>Localização</th>
-                    <th>Créditos solicitados</th>
-                    <th>Status</th>
-                    <th>Ação</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {projetosComCreditosEmitidos.map((projeto) => (
-                    <tr key={projeto.id}>
-                      <td>{projeto.idProjetoBlockchain}</td>
-                      <td>
-                        <strong>{projeto.nome}</strong>
-                        <span>{projeto.descricao}</span>
-                      </td>
-                      <td>{projeto.tipo}</td>
-                      <td>{projeto.localizacao}</td>
-                      <td>{projeto.creditosSolicitados}</td>
-                      <td>
-                        <span className="status-pill">{projeto.status}</span>
-                      </td>
-                      <td>
-                        <button
-                          className="btn-secondary"
-                          type="button"
-                          onClick={() => selecionarProjetoParaEmissao(projeto)}
-                        >
-                          Consultar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {projetoSelecionado && (
-            <div className="status-operacao">
-              <div className="section-title">
-                <div>
-                  <span className="badge">Projeto selecionado</span>
-                  <h3>{projetoSelecionado.nome}</h3>
-                  <p>
-                    ID blockchain: {projetoSelecionado.idProjetoBlockchain} |
-                    Créditos solicitados: {projetoSelecionado.creditosSolicitados} |
-                    Status local: {projetoSelecionado.status}
-                  </p>
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <label>
-                  ID do lote ERC-1155
-                  <input
-                    value={idLote}
-                    onChange={(e) => setIdLote(e.target.value)}
-                    placeholder="Exemplo: 1"
-                  />
-                </label>
-
-                <label>
-                  Ano de referência
-                  <input
-                    value={anoReferencia}
-                    onChange={(e) => setAnoReferencia(e.target.value)}
-                    placeholder="Exemplo: 2026"
-                  />
-                </label>
-              </div>
-
-              <div className="form-actions">
-                <button
-                  className="btn-secondary"
-                  type="button"
-                  disabled={executando}
-                  onClick={() => void consultarProjetoParaEmissao()}
-                >
-                  Consultar projeto
-                </button>
-
-                {projetoSelecionadoAguardandoEmissao && (
-                  <button
-                    className="btn-primary"
-                    type="button"
-                    disabled={executando || resumoEmissao?.emitido === true}
-                    onClick={() => void emitirCreditosSelecionado()}
-                  >
-                    Emitir créditos
-                  </button>
-                )}
-
-                {(projetoSelecionadoJaEmitido || resumoEmissao?.emitido) && (
-                  <button
-                    className="btn-secondary"
-                    type="button"
-                    disabled={executando}
-                    onClick={() => void consultarLoteSelecionado()}
-                  >
-                    Consultar lote
-                  </button>
-                )}
-              </div>
-
-              {(resumoEmissao || loteEmitido) && (
-                <div className="status-grid">
-                  {resumoEmissao && (
-                    <>
-                      <div>
-                        <span>Projeto aprovado?</span>
-                        <strong>{resumoEmissao.aprovado ? "Sim" : "Não"}</strong>
-                      </div>
-
-                      <div>
-                        <span>Projeto já emitido?</span>
-                        <strong>{resumoEmissao.emitido ? "Sim" : "Não"}</strong>
-                      </div>
-
-                      <div>
-                        <span>Créditos aprovados</span>
-                        <strong>{resumoEmissao.creditosAprovados}</strong>
-                      </div>
-
-                      <div>
-                        <span>Proponente</span>
-                        <strong>{encurtarEndereco(resumoEmissao.proponente)}</strong>
-                      </div>
-                    </>
-                  )}
-
-                  {loteEmitido && (
-                    <>
-                      <div>
-                        <span>Lote emitido?</span>
-                        <strong>{loteEmitido.loteEmitido ? "Sim" : "Não"}</strong>
-                      </div>
-
-                      <div>
-                        <span>Quantidade emitida</span>
-                        <strong>{loteEmitido.quantidadeEmitida}</strong>
-                      </div>
-
-                      <div>
-                        <span>Quantidade aposentada</span>
-                        <strong>{loteEmitido.quantidadeAposentada}</strong>
-                      </div>
-
-                      <div>
-                        <span>Ano do lote</span>
-                        <strong>{loteEmitido.anoReferencia}</strong>
-                      </div>
-
-                      <div>
-                        <span>Lote ativo?</span>
-                        <strong>{loteEmitido.ativo ? "Sim" : "Não"}</strong>
-                      </div>
-
-                      <div>
-                        <span>Saldo do proponente no lote</span>
-                        <strong>{saldoProponente || "Não consultado"}</strong>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {mensagemEmissao && (
-                <div className="status-message">{mensagemEmissao}</div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </section>
-  );
-}
-
-function PainelValidacaoProjetos({
-  projetos,
-  onAtualizarStatusProjeto,
-}: {
-  projetos: ProjetoCarbono[];
-  onAtualizarStatusProjeto: (
-    idProjetoBlockchain: string,
-    status: StatusProjeto
-  ) => void;
-}) {
-  const [projetoSelecionadoId, setProjetoSelecionadoId] = useState("");
-  const [executando, setExecutando] = useState(false);
-  const [mensagemValidacao, setMensagemValidacao] = useState("");
-  const [resultadoConsulta, setResultadoConsulta] =
-    useState<ResultadoValidacaoTela | null>(null);
-  const [agoraSegundos, setAgoraSegundos] = useState(() =>
-    Math.floor(Date.now() / 1000)
-  );
 
   useEffect(() => {
-    const intervalo = window.setInterval(() => {
-      setAgoraSegundos(Math.floor(Date.now() / 1000));
-    }, 1000);
-
-    return () => {
-      window.clearInterval(intervalo);
-    };
-  }, []);
-
-  const projetosValidaveis = projetos.filter(
-    (projeto) =>
-      Boolean(projeto.idProjetoBlockchain) &&
-      (projeto.status === "Pendente de validação" ||
-        projeto.status === "Em análise")
-  );
-
-  const projetoSelecionado = projetosValidaveis.find(
-    (projeto) => projeto.id === projetoSelecionadoId
-  );
-
-  const idProjetoBlockchain = projetoSelecionado?.idProjetoBlockchain ?? "";
-
-  const tempoRestanteTela = useMemo(() => {
-    const dados = resultadoConsulta?.dadosVotacao;
-
-    if (!dados || dados.encerrada) {
-      return 0;
-    }
-
-    const fim = Number(dados.fimVotacao);
-
-    if (!Number.isFinite(fim) || fim <= 0) {
-      return 0;
-    }
-
-    return Math.max(0, fim - agoraSegundos);
-  }, [resultadoConsulta, agoraSegundos]);
-
-  async function consultarProjeto() {
-    if (!idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
+    if (focoInicial === "certificados") {
+      void atualizarResumo();
       return;
     }
 
-    try {
-      setExecutando(true);
-      setMensagemValidacao("Consultando validação do projeto...");
-
-      const consulta = await consultarValidacaoProjeto(idProjetoBlockchain);
-
-      setResultadoConsulta(consulta);
-
-      const tempoTexto = consulta.dadosVotacao
-        ? formatarTempoRestante(consulta.dadosVotacao.tempoRestanteSegundos)
-        : "votação ainda não iniciada";
-
-      setMensagemValidacao(
-        `Consulta concluída. Validador apto: ${
-          consulta.validadorApto ? "sim" : "não"
-        }. Votação aberta: ${
-          consulta.votacaoAberta ? "sim" : "não"
-        }. Total de votos: ${
-          consulta.totalVotos
-        }. Tempo restante: ${tempoTexto}.`
-      );
-    } catch (erro) {
-      setMensagemValidacao(`Erro na consulta: ${formatarErro(erro)}`);
-    } finally {
-      setExecutando(false);
-    }
-  }
-
-  async function sincronizarStatusProjetoSelecionado() {
-    if (!idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
-      return;
-    }
-
-    try {
-      setExecutando(true);
-      setMensagemValidacao("Consultando estado real do projeto na blockchain...");
-
-      const estadoReal = await consultarEstadoProjetoBlockchain(
-        idProjetoBlockchain
-      );
-
-      if (estadoReal.statusSugerido !== "Desconhecido") {
-        onAtualizarStatusProjeto(
-          idProjetoBlockchain,
-          estadoReal.statusSugerido
-        );
-      }
-
-      setMensagemValidacao(
-        `Status sincronizado. Estado na blockchain: ${estadoReal.estadoCodigo}. Aprovado: ${
-          estadoReal.aprovado ? "sim" : "não"
-        }. Emitido: ${estadoReal.emitido ? "sim" : "não"}. Status: ${
-          estadoReal.statusSugerido
-        }.`
-      );
-
-      await consultarProjeto();
-    } catch (erro) {
-      setMensagemValidacao(`Erro ao sincronizar status: ${formatarErro(erro)}`);
-    } finally {
-      setExecutando(false);
-    }
-  }
-
-  async function iniciarVotacaoSelecionada() {
-    if (!idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
-      return;
-    }
-
-    try {
-      setExecutando(true);
-      setMensagemValidacao("Solicitando início da votação na MetaMask...");
-
-      const resultado = await iniciarVotacaoProjeto(idProjetoBlockchain);
-
-      onAtualizarStatusProjeto(idProjetoBlockchain, "Em análise");
-
-      setMensagemValidacao(
-        `Votação iniciada para o projeto ${idProjetoBlockchain}. Hash: ${resultado.hash}.`
-      );
-
-      await consultarProjeto();
-    } catch (erro) {
-      setMensagemValidacao(`Erro ao iniciar votação: ${formatarErro(erro)}`);
-    } finally {
-      setExecutando(false);
-    }
-  }
-
-  async function aprovarProjetoSelecionado() {
-    if (!projetoSelecionado || !idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
-      return;
-    }
-
-    try {
-      setExecutando(true);
-
-      setMensagemValidacao(
-        `Aprovando projeto ${idProjetoBlockchain} com ${projetoSelecionado.creditosSolicitados} créditos.`
-      );
-
-      const resultado = await votarProjetoValidacao({
-        idProjeto: idProjetoBlockchain,
-        aprovar: true,
-        creditosSugeridos: projetoSelecionado.creditosSolicitados,
-      });
-
-      setMensagemValidacao(
-        `Voto de aprovação enviado. Hash: ${resultado.hash}. Aguarde o prazo terminar para encerrar a votação.`
-      );
-
-      await consultarProjeto();
-    } catch (erro) {
-      setMensagemValidacao(`Erro ao aprovar projeto: ${formatarErro(erro)}`);
-    } finally {
-      setExecutando(false);
-    }
-  }
-
-  async function rejeitarProjetoSelecionado() {
-    if (!idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
-      return;
-    }
-
-    try {
-      setExecutando(true);
-
-      setMensagemValidacao(`Rejeitando projeto ${idProjetoBlockchain}.`);
-
-      const resultado = await votarProjetoValidacao({
-        idProjeto: idProjetoBlockchain,
-        aprovar: false,
-        creditosSugeridos: 0,
-      });
-
-      setMensagemValidacao(
-        `Voto de rejeição enviado. Hash: ${resultado.hash}. Aguarde o prazo terminar para encerrar a votação.`
-      );
-
-      await consultarProjeto();
-    } catch (erro) {
-      setMensagemValidacao(`Erro ao rejeitar projeto: ${formatarErro(erro)}`);
-    } finally {
-      setExecutando(false);
-    }
-  }
-
-  async function encerrarVotacaoSelecionada() {
-    if (!idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
-      return;
-    }
-
-    try {
-      setExecutando(true);
-
-      setMensagemValidacao(
-        `Encerrando votação do projeto ${idProjetoBlockchain}...`
-      );
-
-      const resultado = await encerrarVotacaoProjeto(idProjetoBlockchain);
-
-      const estadoReal = await consultarEstadoProjetoBlockchain(
-        idProjetoBlockchain
-      );
-
-      if (estadoReal.statusSugerido !== "Desconhecido") {
-        onAtualizarStatusProjeto(
-          idProjetoBlockchain,
-          estadoReal.statusSugerido
-        );
-      }
-
-      setMensagemValidacao(
-        `Votação encerrada. Hash: ${resultado.hash}. Estado na blockchain: ${estadoReal.estadoCodigo}. Aprovado: ${
-          estadoReal.aprovado ? "sim" : "não"
-        }. Status atualizado: ${estadoReal.statusSugerido}.`
-      );
-
-      await consultarProjeto();
-    } catch (erro) {
-      setMensagemValidacao(
-        `Erro ao encerrar votação: ${formatarErro(
-          erro
-        )}. Se a mensagem indicar votação ainda aberta, aguarde o fim do prazo exibido na tela.`
-      );
-    } finally {
-      setExecutando(false);
-    }
-  }
+    void atualizarSomenteLotes();
+  }, [focoInicial]);
 
   return (
     <section className="form-card">
       <div className="section-title">
         <div>
-          <span className="badge">Validação MVP</span>
-          <h3>Projetos pendentes de validação</h3>
+          <span className="badge">
+            {focoInicial === "certificados" ? "Certificados" : "Aposentadoria"}
+          </span>
+          <h3>Meus créditos, aposentadoria e certificados NFT</h3>
           <p>
-            Escolha um projeto cadastrado, inicie a votação, aprove ou rejeite.
-            No MVP, créditos aprovados são iguais aos créditos solicitados.
+            Consulte os lotes existentes no marketplace, veja os créditos
+            adquiridos pela carteira conectada e selecione um lote para
+            aposentadoria.
           </p>
         </div>
       </div>
 
-      {projetosValidaveis.length === 0 ? (
+      <div className="form-actions">
+        <button
+          className="btn-primary"
+          type="button"
+          disabled={executando}
+          onClick={() => void atualizarResumo()}
+        >
+          Atualizar resumo completo
+        </button>
+
+        <button
+          className="btn-secondary"
+          type="button"
+          disabled={executando}
+          onClick={() => void atualizarSomenteLotes()}
+        >
+          Atualizar meus créditos
+        </button>
+      </div>
+
+      <div className="status-grid">
+        <div>
+          <span>Taxa de aposentadoria</span>
+          <strong>
+            {taxaAposentadoria
+              ? `${taxaAposentadoria.taxaETH} ETH`
+              : "Não consultada"}
+          </strong>
+        </div>
+
+        <div>
+          <span>Total compensado pelo comprador</span>
+          <strong>{resumo?.totalCompensado ?? "Não consultado"}</strong>
+        </div>
+
+        <div>
+          <span>Aposentadorias registradas</span>
+          <strong>{resumo?.aposentadorias.length ?? "Não consultado"}</strong>
+        </div>
+
+        <div>
+          <span>Certificados encontrados</span>
+          <strong>{resumo?.certificados.length ?? "Não consultado"}</strong>
+        </div>
+      </div>
+
+      <div className="section-title">
+        <div>
+          <span className="badge">Meus Créditos</span>
+          <h3>Créditos adquiridos pelo comprador</h3>
+          <p>
+            Estes são os lotes nos quais a carteira conectada possui saldo
+            ERC-1155 maior que zero.
+          </p>
+        </div>
+      </div>
+
+      {lotesAdquiridos.length === 0 ? (
         <div className="empty-state">
-          Nenhum projeto com ID blockchain disponível para validação.
-        </div>
-      ) : (
-        <>
-          <div className="projetos-table-wrap">
-            <table className="projetos-table">
-              <thead>
-                <tr>
-                  <th>ID blockchain</th>
-                  <th>Projeto</th>
-                  <th>Tipo</th>
-                  <th>Localização</th>
-                  <th>Créditos</th>
-                  <th>Status</th>
-                  <th>Ação</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {projetosValidaveis.map((projeto) => (
-                  <tr key={projeto.id}>
-                    <td>{projeto.idProjetoBlockchain}</td>
-                    <td>
-                      <strong>{projeto.nome}</strong>
-                      <span>{projeto.descricao}</span>
-                    </td>
-                    <td>{projeto.tipo}</td>
-                    <td>{projeto.localizacao}</td>
-                    <td>{projeto.creditosSolicitados}</td>
-                    <td>
-                      <span className="status-pill">{projeto.status}</span>
-                    </td>
-                    <td>
-                      <button
-                        className="btn-secondary"
-                        type="button"
-                        onClick={() => {
-                          setProjetoSelecionadoId(projeto.id);
-                          setResultadoConsulta(null);
-                          setMensagemValidacao(
-                            `Projeto ${projeto.idProjetoBlockchain} selecionado.`
-                          );
-                        }}
-                      >
-                        Selecionar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {projetoSelecionado && (
-            <div className="status-operacao">
-              <div className="section-title">
-                <div>
-                  <span className="badge">Projeto selecionado</span>
-                  <h3>{projetoSelecionado.nome}</h3>
-                  <p>
-                    ID blockchain: {projetoSelecionado.idProjetoBlockchain} |
-                    Créditos solicitados: {projetoSelecionado.creditosSolicitados}
-                  </p>
-                </div>
-              </div>
-
-              <div className="form-actions">
-                <button
-                  className="btn-secondary"
-                  type="button"
-                  disabled={executando}
-                  onClick={() => void consultarProjeto()}
-                >
-                  Verificar aptidão
-                </button>
-
-                <button
-                  className="btn-secondary"
-                  type="button"
-                  disabled={executando}
-                  onClick={() => void sincronizarStatusProjetoSelecionado()}
-                >
-                  Sincronizar status
-                </button>
-
-                <button
-                  className="btn-primary"
-                  type="button"
-                  disabled={executando}
-                  onClick={() => void iniciarVotacaoSelecionada()}
-                >
-                  Iniciar votação
-                </button>
-
-                <button
-                  className="btn-primary"
-                  type="button"
-                  disabled={executando}
-                  onClick={() => void aprovarProjetoSelecionado()}
-                >
-                  Aprovar
-                </button>
-
-                <button
-                  className="btn-secondary"
-                  type="button"
-                  disabled={executando}
-                  onClick={() => void rejeitarProjetoSelecionado()}
-                >
-                  Rejeitar
-                </button>
-
-                <button
-                  className="btn-secondary"
-                  type="button"
-                  disabled={executando}
-                  onClick={() => void encerrarVotacaoSelecionada()}
-                >
-                  Encerrar votação
-                </button>
-              </div>
-
-              {resultadoConsulta && (
-                <div className="status-grid">
-                  <div>
-                    <span>Validador apto</span>
-                    <strong>{resultadoConsulta.validadorApto ? "Sim" : "Não"}</strong>
-                  </div>
-
-                  <div>
-                    <span>Votação aberta</span>
-                    <strong>{resultadoConsulta.votacaoAberta ? "Sim" : "Não"}</strong>
-                  </div>
-
-                  <div>
-                    <span>Total de votos</span>
-                    <strong>{resultadoConsulta.totalVotos}</strong>
-                  </div>
-
-                  {resultadoConsulta.dadosVotacao && (
-                    <>
-                      <div>
-                        <span>Início da votação</span>
-                        <strong>
-                          {formatarDataHoraUnix(
-                            resultadoConsulta.dadosVotacao.inicioVotacao
-                          )}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <span>Fim da votação</span>
-                        <strong>
-                          {formatarDataHoraUnix(
-                            resultadoConsulta.dadosVotacao.fimVotacao
-                          )}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <span>Tempo restante</span>
-                        <strong>{formatarTempoRestante(tempoRestanteTela)}</strong>
-                      </div>
-
-                      <div>
-                        <span>Pode encerrar?</span>
-                        <strong>
-                          {resultadoConsulta.dadosVotacao.encerrada
-                            ? "Já encerrada"
-                            : tempoRestanteTela <= 0
-                            ? "Sim"
-                            : "Ainda não"}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <span>Votos de aprovação</span>
-                        <strong>
-                          {resultadoConsulta.dadosVotacao.votosAprovacao}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <span>Votos de rejeição</span>
-                        <strong>
-                          {resultadoConsulta.dadosVotacao.votosRejeicao}
-                        </strong>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {mensagemValidacao && (
-                <div className="status-message">{mensagemValidacao}</div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </section>
-  );
-}
-
-function FormularioProjeto({
-  onSalvar,
-  onCancelar,
-}: {
-  onSalvar: (dados: DadosNovoProjeto) => void;
-  onCancelar: () => void;
-}) {
-  const [nome, setNome] = useState("");
-  const [tipo, setTipo] = useState("Energia Solar");
-  const [localizacao, setLocalizacao] = useState("");
-  const [creditosSolicitados, setCreditosSolicitados] = useState("");
-  const [uriEvidencias, setUriEvidencias] = useState("");
-  const [inicioPeriodoReferencia, setInicioPeriodoReferencia] = useState("");
-  const [fimPeriodoReferencia, setFimPeriodoReferencia] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [erro, setErro] = useState("");
-
-  function enviarProjeto(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
-
-    const creditosNumericos = Number(creditosSolicitados);
-
-    if (!nome.trim()) {
-      setErro("Informe o nome do projeto.");
-      return;
-    }
-
-    if (!localizacao.trim()) {
-      setErro("Informe a localização do projeto.");
-      return;
-    }
-
-    if (!descricao.trim()) {
-      setErro("Informe uma descrição técnica resumida do projeto.");
-      return;
-    }
-
-    if (!uriEvidencias.trim()) {
-      setErro("Informe a URI das evidências.");
-      return;
-    }
-
-    if (!inicioPeriodoReferencia) {
-      setErro("Informe o início do período de referência.");
-      return;
-    }
-
-    if (!fimPeriodoReferencia) {
-      setErro("Informe o fim do período de referência.");
-      return;
-    }
-
-    if (
-      new Date(`${inicioPeriodoReferencia}T00:00:00`).getTime() >=
-      new Date(`${fimPeriodoReferencia}T00:00:00`).getTime()
-    ) {
-      setErro("O início do período deve ser anterior ao fim do período.");
-      return;
-    }
-
-    if (!Number.isFinite(creditosNumericos) || creditosNumericos <= 0) {
-      setErro("Informe uma quantidade de créditos solicitados maior que zero.");
-      return;
-    }
-
-    onSalvar({
-      nome: nome.trim(),
-      tipo,
-      localizacao: localizacao.trim(),
-      creditosSolicitados: creditosNumericos,
-      descricao: descricao.trim(),
-      uriEvidencias: uriEvidencias.trim(),
-      inicioPeriodoReferencia,
-      fimPeriodoReferencia,
-    });
-
-    setErro("");
-    setNome("");
-    setTipo("Energia Solar");
-    setLocalizacao("");
-    setCreditosSolicitados("");
-    setUriEvidencias("");
-    setInicioPeriodoReferencia("");
-    setFimPeriodoReferencia("");
-    setDescricao("");
-  }
-
-  return (
-    <section className="form-card">
-      <div className="section-title">
-        <div>
-          <span className="badge">Proponente</span>
-          <h3>Novo projeto de crédito de carbono</h3>
-          <p>
-            Cadastre as informações iniciais do projeto para posterior análise
-            pelos validadores.
-          </p>
-        </div>
-      </div>
-
-      {erro && <div className="alerta">{erro}</div>}
-
-      <form onSubmit={enviarProjeto}>
-        <div className="form-grid">
-          <label>
-            Nome do projeto
-            <input
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Exemplo: Usina Solar Comunitária"
-            />
-          </label>
-
-          <label>
-            Tipo do projeto
-            <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
-              <option>Energia Solar</option>
-              <option>Energia Eólica</option>
-              <option>Reflorestamento</option>
-              <option>Conservação Florestal</option>
-              <option>Biodigestor</option>
-              <option>Eficiência Energética</option>
-              <option>Reciclagem</option>
-              <option>Outro</option>
-            </select>
-          </label>
-
-          <label>
-            Localização
-            <input
-              value={localizacao}
-              onChange={(e) => setLocalizacao(e.target.value)}
-              placeholder="Município e UF"
-            />
-          </label>
-
-          <label>
-            Créditos solicitados
-            <input
-              value={creditosSolicitados}
-              onChange={(e) => setCreditosSolicitados(e.target.value)}
-              type="number"
-              min="1"
-              step="1"
-              placeholder="Exemplo: 120"
-            />
-          </label>
-
-          <label>
-            Início do período de referência
-            <input
-              value={inicioPeriodoReferencia}
-              onChange={(e) => setInicioPeriodoReferencia(e.target.value)}
-              type="date"
-            />
-          </label>
-
-          <label>
-            Fim do período de referência
-            <input
-              value={fimPeriodoReferencia}
-              onChange={(e) => setFimPeriodoReferencia(e.target.value)}
-              type="date"
-            />
-          </label>
-        </div>
-
-        <label className="full-field">
-          URI das evidências
-          <input
-            value={uriEvidencias}
-            onChange={(e) => setUriEvidencias(e.target.value)}
-            placeholder="Exemplo: ipfs://carbonledger/evidencias/projeto-001.json"
-          />
-        </label>
-
-        <label className="full-field">
-          Descrição técnica resumida
-          <textarea
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            rows={5}
-            placeholder="Descreva a metodologia, a fonte de redução ou remoção de emissões e a justificativa ambiental."
-          />
-        </label>
-
-        <div className="form-actions">
-          <button className="btn-secondary" type="button" onClick={onCancelar}>
-            Cancelar
-          </button>
-
-          <button className="btn-primary" type="submit">
-            Enviar para validação
-          </button>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function ListaProjetos({ projetos }: { projetos: ProjetoCarbono[] }) {
-  return (
-    <section className="form-card">
-      <div className="section-title">
-        <div>
-          <span className="badge">Projetos</span>
-          <h3>Meus projetos cadastrados</h3>
-          <p>
-            Projetos submetidos pelo proponente e seus respectivos estados de
-            validação.
-          </p>
-        </div>
-      </div>
-
-      {projetos.length === 0 ? (
-        <div className="empty-state">
-          Nenhum projeto cadastrado por este proponente.
+          Nenhum lote com saldo encontrado. Clique em Atualizar meus créditos.
+          Se você acabou de comprar, confirme se a MetaMask está na conta do
+          comprador e na rede Hardhat Localhost.
         </div>
       ) : (
         <div className="projetos-table-wrap">
           <table className="projetos-table">
             <thead>
               <tr>
-                <th>ID blockchain</th>
-                <th>Projeto</th>
-                <th>Tipo</th>
-                <th>Localização</th>
-                <th>Créditos</th>
-                <th>Status</th>
-                <th>Transação</th>
-                <th>Cadastro</th>
+                <th>ID lote</th>
+                <th>Saldo comprador</th>
+                <th>Total ofertado</th>
+                <th>Disponível no mercado</th>
+                <th>Preço recente</th>
+                <th>Total aposentado no lote</th>
+                <th>Ação</th>
               </tr>
             </thead>
 
             <tbody>
-              {projetos.map((projeto) => (
-                <tr key={projeto.id}>
-                  <td>{projeto.idProjetoBlockchain ?? "Não capturado"}</td>
+              {lotesAdquiridos.map((lote) => (
+                <tr key={lote.idLote}>
+                  <td>{lote.idLote}</td>
                   <td>
-                    <strong>{projeto.nome}</strong>
-                    <span>{projeto.descricao}</span>
+                    <strong>{lote.saldoComprador}</strong>
                   </td>
-                  <td>{projeto.tipo}</td>
-                  <td>{projeto.localizacao}</td>
-                  <td>{projeto.creditosSolicitados}</td>
+                  <td>{lote.totalOfertadoMarketplace}</td>
+                  <td>{lote.quantidadeDisponivelMarketplace}</td>
+                  <td>{lote.ultimoPrecoPorCreditoETH} ETH</td>
+                  <td>{lote.totalAposentadoNoLote}</td>
                   <td>
-                    <span className="status-pill">{projeto.status}</span>
+                    <button
+                      className="btn-primary"
+                      type="button"
+                      disabled={executando}
+                      onClick={() => selecionarLoteParaAposentadoria(lote)}
+                    >
+                      Usar lote
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="section-title">
+        <div>
+          <span className="badge">Lotes conhecidos</span>
+          <h3>Lotes existentes no marketplace</h3>
+          <p>
+            Lista informativa de lotes encontrados a partir das ofertas já
+            criadas no marketplace. Lotes sem saldo não podem ser aposentados por
+            esta carteira.
+          </p>
+        </div>
+      </div>
+
+      {lotesCredito.length === 0 ? (
+        <div className="empty-state">
+          Nenhum lote conhecido carregado. Clique em Atualizar meus créditos.
+        </div>
+      ) : (
+        <div className="projetos-table-wrap">
+          <table className="projetos-table">
+            <thead>
+              <tr>
+                <th>ID lote</th>
+                <th>Saldo comprador</th>
+                <th>Ofertas</th>
+                <th>Total ofertado</th>
+                <th>Disponível</th>
+                <th>Preço recente</th>
+                <th>Estados</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {lotesCredito.map((lote) => (
+                <tr key={lote.idLote}>
+                  <td>{lote.idLote}</td>
+                  <td>
+                    <strong>{lote.saldoComprador}</strong>
+                  </td>
+                  <td>{lote.quantidadeOfertas}</td>
+                  <td>{lote.totalOfertadoMarketplace}</td>
+                  <td>{lote.quantidadeDisponivelMarketplace}</td>
+                  <td>{lote.ultimoPrecoPorCreditoETH} ETH</td>
+                  <td>
+                    <span className="status-pill">
+                      {lote.possuiSaldo ? "Adquirido" : "Sem saldo"}
+                    </span>
+                    <span>{lote.estados}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {lotesSemSaldo.length > 0 && (
+        <div className="status-message">
+          Existem {lotesSemSaldo.length} lote(s) conhecido(s) no marketplace sem
+          saldo para a carteira conectada.
+        </div>
+      )}
+
+      <div className="status-operacao">
+        <div className="section-title">
+          <div>
+            <span className="badge">Nova aposentadoria</span>
+            <h3>Aposentar créditos do comprador</h3>
+            <p>
+              Selecione um lote na tabela acima ou informe manualmente o ID do
+              lote comprado.
+            </p>
+          </div>
+        </div>
+
+        <div className="form-grid">
+          <label>
+            ID do lote ERC-1155
+            <input
+              value={idLote}
+              onChange={(e) => {
+                setIdLote(e.target.value);
+                setSaldoLote("");
+              }}
+              placeholder="Exemplo: 1"
+            />
+          </label>
+
+          <label>
+            Quantidade a aposentar
+            <input
+              value={quantidade}
+              onChange={(e) => setQuantidade(e.target.value)}
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Exemplo: 10"
+            />
+          </label>
+
+          <label>
+            Saldo no lote
+            <input
+              value={saldoLote || "Não consultado"}
+              readOnly
+              aria-label="Saldo no lote"
+            />
+          </label>
+        </div>
+
+        <label className="full-field">
+          Motivo da aposentadoria
+          <input
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Exemplo: Compensação das emissões de 2026"
+          />
+        </label>
+
+        <label className="full-field">
+          URI do relatório de compensação
+          <input
+            value={uriRelatorio}
+            onChange={(e) => setUriRelatorio(e.target.value)}
+            placeholder="Exemplo: ipfs://.../relatorio.json"
+          />
+        </label>
+
+        <label className="full-field">
+          URI dos metadados do certificado NFT
+          <input
+            value={uriCertificado}
+            onChange={(e) => setUriCertificado(e.target.value)}
+            placeholder="Exemplo: ipfs://.../certificado.json"
+          />
+        </label>
+
+        <div className="form-actions">
+          <button
+            className="btn-secondary"
+            type="button"
+            disabled={executando}
+            onClick={() => void consultarSaldoDoLote()}
+          >
+            Consultar saldo no lote
+          </button>
+
+          <button
+            className="btn-primary"
+            type="button"
+            disabled={executando}
+            onClick={() => void aposentarCreditosSelecionados()}
+          >
+            Aposentar créditos e emitir NFT
+          </button>
+        </div>
+
+        {mensagemAposentadoria && (
+          <div className="status-message">{mensagemAposentadoria}</div>
+        )}
+      </div>
+
+      <div className="section-title">
+        <div>
+          <span className="badge">Histórico</span>
+          <h3>Aposentadorias do comprador</h3>
+          <p>
+            Registros de compensação realizados pela carteira atualmente
+            conectada.
+          </p>
+        </div>
+      </div>
+
+      {!resumo || resumo.aposentadorias.length === 0 ? (
+        <div className="empty-state">
+          Nenhuma aposentadoria carregada. Clique em Atualizar resumo completo.
+        </div>
+      ) : (
+        <div className="projetos-table-wrap">
+          <table className="projetos-table">
+            <thead>
+              <tr>
+                <th>ID aposentadoria</th>
+                <th>Lote</th>
+                <th>Quantidade</th>
+                <th>Certificado</th>
+                <th>Data</th>
+                <th>Motivo</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {resumo.aposentadorias.map((aposentadoria) => (
+                <tr key={aposentadoria.idAposentadoria}>
+                  <td>{aposentadoria.idAposentadoria}</td>
+                  <td>{aposentadoria.idLote}</td>
+                  <td>{aposentadoria.quantidade}</td>
+                  <td>{aposentadoria.idCertificado}</td>
+                  <td>
+                    {formatarDataHoraUnix(aposentadoria.dataAposentadoria)}
                   </td>
                   <td>
-                    {projeto.hashTransacao ? (
-                      <span>{encurtarEndereco(projeto.hashTransacao)}</span>
-                    ) : (
-                      <span>Não disponível</span>
-                    )}
+                    <strong>{aposentadoria.motivo}</strong>
+                    <span>{aposentadoria.uriRelatorio}</span>
                   </td>
-                  <td>{projeto.criadoEm}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="section-title">
+        <div>
+          <span className="badge">NFT</span>
+          <h3>Certificados de compensação</h3>
+          <p>
+            NFTs ERC-721 emitidos para comprovar as compensações realizadas.
+          </p>
+        </div>
+      </div>
+
+      {!resumo || resumo.certificados.length === 0 ? (
+        <div className="empty-state">
+          Nenhum certificado carregado. Clique em Atualizar resumo completo.
+        </div>
+      ) : (
+        <div className="projetos-table-wrap">
+          <table className="projetos-table">
+            <thead>
+              <tr>
+                <th>ID certificado</th>
+                <th>Aposentadoria</th>
+                <th>Beneficiário</th>
+                <th>Quantidade</th>
+                <th>Data</th>
+                <th>URI</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {resumo.certificados.map((certificado) => (
+                <tr key={certificado.idCertificado}>
+                  <td>{certificado.idCertificado}</td>
+                  <td>{certificado.idAposentadoria}</td>
+                  <td>{encurtarEndereco(certificado.beneficiario)}</td>
+                  <td>{certificado.quantidadeCompensada}</td>
+                  <td>{formatarDataHoraUnix(certificado.dataEmissao)}</td>
+                  <td>
+                    <strong>{certificado.uriCertificado}</strong>
+                    <span>{certificado.tokenURI}</span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -2491,68 +2000,3 @@ function ListaProjetos({ projetos }: { projetos: ProjetoCarbono[] }) {
     </section>
   );
 }
-
-function StatusOperacao({ operacao }: { operacao: OperacaoWeb3 }) {
-  return (
-    <section className="status-operacao">
-      <div className="section-title">
-        <div>
-          <span className="badge">Web3</span>
-          <h3>Status da operação</h3>
-          <p>Acompanhamento da submissão do projeto na blockchain.</p>
-        </div>
-      </div>
-
-      <div className="status-grid">
-        <div>
-          <span>Modo</span>
-          <strong>{operacao.modo}</strong>
-        </div>
-
-        <div>
-          <span>Status</span>
-          <strong>{operacao.status}</strong>
-        </div>
-
-        <div>
-          <span>Contrato</span>
-          <strong>{operacao.contrato || "Não configurado"}</strong>
-        </div>
-
-        <div>
-          <span>Conta</span>
-          <strong>{operacao.conta || "Não conectada"}</strong>
-        </div>
-
-        <div>
-          <span>Rede</span>
-          <strong>{operacao.rede || "Não identificada"}</strong>
-        </div>
-
-        <div>
-          <span>Hash da transação</span>
-          <strong>{operacao.hash || "Ainda não gerado"}</strong>
-        </div>
-      </div>
-
-      <div className="status-message">{operacao.mensagem}</div>
-    </section>
-  );
-}
-
-function Card({
-  titulo,
-  children,
-}: {
-  titulo: string;
-  children: ReactNode;
-}) {
-  return (
-    <article className="painel">
-      <h3>{titulo}</h3>
-      {children}
-    </article>
-  );
-}
-
-export default App;
