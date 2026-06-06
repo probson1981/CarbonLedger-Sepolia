@@ -40,8 +40,6 @@ function erroIndicaVotacaoJaIniciada(erro: unknown) {
   return (
     mensagem.includes("votacao ja iniciada") ||
     mensagem.includes("vota\u00e7\u00e3o j\u00e1 iniciada") ||
-    mensagem.includes("votacao existente") ||
-    mensagem.includes("vota\u00e7\u00e3o existente") ||
     mensagem.includes("ja iniciada") ||
     mensagem.includes("j\u00e1 iniciada")
   );
@@ -132,7 +130,7 @@ function PainelValidacaoProjetos({
     (projeto) => projeto.status === STATUS_REJEITADO
   );
 
-  const projetoSelecionado = projetosComIdBlockchain.find(
+  const projetoSelecionado = projetosAcompanhaveis.find(
     (projeto) => projeto.id === projetoSelecionadoId
   );
 
@@ -154,10 +152,8 @@ function PainelValidacaoProjetos({
     return Math.max(0, fim - agoraSegundos);
   }, [resultadoConsulta, agoraSegundos]);
 
-  const projetoFinalizado =
-    projetoSelecionado?.status === STATUS_APROVADO ||
-    projetoSelecionado?.status === STATUS_REJEITADO ||
-    projetoSelecionado?.status === STATUS_CREDITOS_EMITIDOS;
+  const podeIniciarVotacao =
+    projetoSelecionado?.status === STATUS_ANALISE && votacaoExiste !== true;
 
   const podeVotar =
     Boolean(projetoSelecionado) &&
@@ -253,8 +249,12 @@ function PainelValidacaoProjetos({
                 statusFinal = STATUS_CREDITOS_EMITIDOS;
               } else if (estadoReal.aprovado) {
                 statusFinal = STATUS_APROVADO;
+              } else if (
+                statusSugeridoEhStatusProjeto(estadoReal.statusSugerido)
+              ) {
+                statusFinal = estadoReal.statusSugerido;
               } else {
-                statusFinal = STATUS_PENDENTE;
+                statusFinal = projeto.status;
               }
             } else {
               throw erroConsulta;
@@ -337,10 +337,9 @@ function PainelValidacaoProjetos({
       if (erroIndicaVotacaoInexistente(erro)) {
         setResultadoConsulta(null);
         setVotacaoExiste(false);
-        onAtualizarStatusProjeto(idProjetoBlockchain, STATUS_PENDENTE);
 
         setMensagemValidacao(
-          "Este projeto ainda n\u00e3o possui vota\u00e7\u00e3o criada na blockchain. Clique em Iniciar vota\u00e7\u00e3o antes de aprovar ou rejeitar."
+          "Este projeto est\u00e1 em an\u00e1lise, mas ainda n\u00e3o possui vota\u00e7\u00e3o criada na blockchain. Clique em Iniciar vota\u00e7\u00e3o antes de aprovar ou rejeitar."
         );
 
         return;
@@ -385,14 +384,21 @@ function PainelValidacaoProjetos({
   }
 
   async function iniciarVotacaoSelecionada() {
-    if (!idProjetoBlockchain) {
+    if (!idProjetoBlockchain || !projetoSelecionado) {
       setMensagemValidacao("Selecione um projeto com ID blockchain v\u00e1lido.");
       return;
     }
 
-    if (projetoFinalizado) {
+    if (projetoSelecionado.status !== STATUS_ANALISE) {
       setMensagemValidacao(
-        "Este projeto j\u00e1 foi finalizado e n\u00e3o pode iniciar nova vota\u00e7\u00e3o."
+        "A vota\u00e7\u00e3o s\u00f3 pode ser iniciada para projetos com status Em an\u00e1lise."
+      );
+      return;
+    }
+
+    if (votacaoExiste === true) {
+      setMensagemValidacao(
+        "A vota\u00e7\u00e3o deste projeto j\u00e1 existe. Clique em Verificar aptid\u00e3o e depois aprove ou rejeite."
       );
       return;
     }
@@ -480,7 +486,6 @@ function PainelValidacaoProjetos({
       if (erroIndicaVotacaoInexistente(erro)) {
         setResultadoConsulta(null);
         setVotacaoExiste(false);
-        onAtualizarStatusProjeto(idProjetoBlockchain, STATUS_PENDENTE);
 
         setMensagemValidacao(
           "Erro ao aprovar projeto: a vota\u00e7\u00e3o ainda n\u00e3o existe na blockchain. Clique em Iniciar vota\u00e7\u00e3o antes de votar."
@@ -530,7 +535,6 @@ function PainelValidacaoProjetos({
       if (erroIndicaVotacaoInexistente(erro)) {
         setResultadoConsulta(null);
         setVotacaoExiste(false);
-        onAtualizarStatusProjeto(idProjetoBlockchain, STATUS_PENDENTE);
 
         setMensagemValidacao(
           "Erro ao rejeitar projeto: a vota\u00e7\u00e3o ainda n\u00e3o existe na blockchain. Clique em Iniciar vota\u00e7\u00e3o antes de votar."
@@ -663,7 +667,7 @@ function PainelValidacaoProjetos({
           <h3>{"Projetos para valida\u00e7\u00e3o e acompanhamento"}</h3>
           <p>
             {
-              "Acompanhe projetos pendentes, projetos em vota\u00e7\u00e3o e projetos j\u00e1 validados. Ap\u00f3s atualizar a p\u00e1gina, selecione o projeto e clique em Sincronizar status para recuperar o estado real da blockchain."
+              "A vota\u00e7\u00e3o deve ser iniciada apenas para projetos com status Em an\u00e1lise. Depois disso, o validador pode votar e, ao final do prazo, encerrar a vota\u00e7\u00e3o."
             }
           </p>
         </div>
@@ -682,7 +686,7 @@ function PainelValidacaoProjetos({
         </button>
       </div>
 
-      {projetosComIdBlockchain.length === 0 ? (
+      {projetosAcompanhaveis.length === 0 ? (
         <div className="empty-state">
           {"Nenhum projeto com ID blockchain dispon\u00edvel para acompanhamento."}
         </div>
@@ -694,13 +698,13 @@ function PainelValidacaoProjetos({
               <h3>{"Todos os projetos acompanh\u00e1veis"}</h3>
               <p>
                 {
-                  "Lista geral dos projetos com ID blockchain. Use esta tabela quando o status local ainda estiver desatualizado ap\u00f3s refresh."
+                  "Lista geral dos projetos com ID blockchain, exceto aqueles que j\u00e1 tiveram cr\u00e9ditos emitidos."
                 }
               </p>
             </div>
           </div>
 
-          {renderizarTabelaProjetos(projetosComIdBlockchain)}
+          {renderizarTabelaProjetos(projetosAcompanhaveis)}
 
           <div className="section-title">
             <div>
@@ -708,7 +712,7 @@ function PainelValidacaoProjetos({
               <h3>{"Projetos pendentes de valida\u00e7\u00e3o"}</h3>
               <p>
                 {
-                  "Projetos cadastrados que ainda n\u00e3o tiveram a vota\u00e7\u00e3o iniciada."
+                  "Projetos cadastrados que ainda n\u00e3o est\u00e3o em an\u00e1lise. A vota\u00e7\u00e3o n\u00e3o deve ser iniciada aqui."
                 }
               </p>
             </div>
@@ -718,11 +722,11 @@ function PainelValidacaoProjetos({
 
           <div className="section-title">
             <div>
-              <span className="badge">{"Em vota\u00e7\u00e3o"}</span>
-              <h3>{"Projetos em processo de valida\u00e7\u00e3o"}</h3>
+              <span className="badge">{"Em an\u00e1lise"}</span>
+              <h3>{"Projetos em an\u00e1lise"}</h3>
               <p>
                 {
-                  "Projetos com vota\u00e7\u00e3o iniciada, voto registrado ou aguardando encerramento."
+                  "Projetos aptos para abertura de vota\u00e7\u00e3o, voto e posterior encerramento."
                 }
               </p>
             </div>
@@ -734,11 +738,7 @@ function PainelValidacaoProjetos({
             <div>
               <span className="badge">{"Aprovados"}</span>
               <h3>{"Projetos aprovados"}</h3>
-              <p>
-                {
-                  "Projetos que j\u00e1 passaram pela vota\u00e7\u00e3o e foram aprovados."
-                }
-              </p>
+              <p>{"Projetos que j\u00e1 passaram pela vota\u00e7\u00e3o."}</p>
             </div>
           </div>
 
@@ -748,11 +748,7 @@ function PainelValidacaoProjetos({
             <div>
               <span className="badge">{"Rejeitados"}</span>
               <h3>{"Projetos rejeitados"}</h3>
-              <p>
-                {
-                  "Projetos que j\u00e1 passaram pela vota\u00e7\u00e3o e foram rejeitados."
-                }
-              </p>
+              <p>{"Projetos que j\u00e1 passaram pela vota\u00e7\u00e3o."}</p>
             </div>
           </div>
 
@@ -792,7 +788,11 @@ function PainelValidacaoProjetos({
                 <button
                   className="btn-primary"
                   type="button"
-                  disabled={executando || sincronizandoTodos || projetoFinalizado}
+                  disabled={
+                    executando ||
+                    sincronizandoTodos ||
+                    !podeIniciarVotacao
+                  }
                   onClick={() => void iniciarVotacaoSelecionada()}
                 >
                   {"Iniciar vota\u00e7\u00e3o"}
