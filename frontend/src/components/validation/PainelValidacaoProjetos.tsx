@@ -19,18 +19,18 @@ import {
   obterPrimeiraConta,
 } from "../../utils/carbonledgerUtils";
 
-const STATUS_PENDENTE: StatusProjeto = "Pendente de valida\u00e7\u00e3o";
-const STATUS_ANALISE: StatusProjeto = "Em an\u00e1lise";
+const STATUS_PENDENTE: StatusProjeto = "Pendente de validação";
+const STATUS_ANALISE: StatusProjeto = "Em análise";
 const STATUS_APROVADO: StatusProjeto = "Aprovado";
 const STATUS_REJEITADO: StatusProjeto = "Rejeitado";
-const STATUS_CREDITOS_EMITIDOS: StatusProjeto = "Cr\u00e9ditos emitidos";
+const STATUS_CREDITOS_EMITIDOS: StatusProjeto = "Créditos emitidos";
 
 function erroIndicaVotacaoInexistente(erro: unknown) {
   const mensagem = formatarErro(erro).toLowerCase();
 
   return (
     mensagem.includes("votacao inexistente") ||
-    mensagem.includes("vota\u00e7\u00e3o inexistente")
+    mensagem.includes("votação inexistente")
   );
 }
 
@@ -39,9 +39,9 @@ function erroIndicaVotacaoJaIniciada(erro: unknown) {
 
   return (
     mensagem.includes("votacao ja iniciada") ||
-    mensagem.includes("vota\u00e7\u00e3o j\u00e1 iniciada") ||
+    mensagem.includes("votação já iniciada") ||
     mensagem.includes("ja iniciada") ||
-    mensagem.includes("j\u00e1 iniciada")
+    mensagem.includes("já iniciada")
   );
 }
 
@@ -59,7 +59,7 @@ async function solicitarContaMetaMask() {
   const ethereum = obterEthereum();
 
   if (!ethereum) {
-    throw new Error("MetaMask n\u00e3o encontrada.");
+    throw new Error("MetaMask não encontrada.");
   }
 
   const contas = await ethereum.request({
@@ -152,11 +152,18 @@ function PainelValidacaoProjetos({
     return Math.max(0, fim - agoraSegundos);
   }, [resultadoConsulta, agoraSegundos]);
 
+  const statusPermiteTentarIniciar =
+    projetoSelecionado?.status === STATUS_PENDENTE ||
+    projetoSelecionado?.status === STATUS_ANALISE;
+
   const podeIniciarVotacao =
-    projetoSelecionado?.status === STATUS_ANALISE && votacaoExiste !== true;
+    Boolean(projetoSelecionado) &&
+    statusPermiteTentarIniciar &&
+    votacaoExiste !== true;
 
   const podeVotar =
     Boolean(projetoSelecionado) &&
+    Boolean(resultadoConsulta?.dadosVotacao) &&
     resultadoConsulta?.votacaoAberta === true &&
     votacaoExiste === true;
 
@@ -190,7 +197,7 @@ function PainelValidacaoProjetos({
     setVotacaoExiste(null);
 
     setMensagemValidacao(
-      `Projeto ${projeto.idProjetoBlockchain} selecionado. Status local: ${projeto.status}. Clique em Verificar aptid\u00e3o ou Sincronizar status para consultar o estado real na blockchain.`
+      `Projeto ${projeto.idProjetoBlockchain} selecionado. Status local: ${projeto.status}. Clique em Verificar aptidão ou Sincronizar status para consultar o estado real na blockchain.`
     );
   }
 
@@ -198,7 +205,7 @@ function PainelValidacaoProjetos({
     if (projetosComIdBlockchain.length === 0) {
       if (mostrarMensagem) {
         setMensagemValidacao(
-          "Nenhum projeto com ID blockchain dispon\u00edvel para sincronizar."
+          "Nenhum projeto com ID blockchain disponível para sincronizar."
         );
       }
 
@@ -286,7 +293,7 @@ function PainelValidacaoProjetos({
 
       if (mostrarMensagem) {
         setMensagemValidacao(
-          `Sincroniza\u00e7\u00e3o conclu\u00edda. Projetos atualizados: ${atualizados}. Ignorados: ${ignorados}. Erros: ${erros}.`
+          `Sincronização concluída. Projetos atualizados: ${atualizados}. Ignorados: ${ignorados}. Erros: ${erros}.`
         );
       }
     } finally {
@@ -296,18 +303,19 @@ function PainelValidacaoProjetos({
 
   async function consultarProjeto() {
     if (!idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain v\u00e1lido.");
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
       return;
     }
 
     try {
       setExecutando(true);
-      setMensagemValidacao("Consultando valida\u00e7\u00e3o do projeto...");
+      setMensagemValidacao("Consultando validação do projeto...");
 
       const consulta = await consultarValidacaoProjeto(idProjetoBlockchain);
+      const existeVotacao = Boolean(consulta.dadosVotacao);
 
       setResultadoConsulta(consulta);
-      setVotacaoExiste(true);
+      setVotacaoExiste(existeVotacao);
 
       if (consulta.dadosVotacao) {
         if (consulta.dadosVotacao.encerrada) {
@@ -322,13 +330,15 @@ function PainelValidacaoProjetos({
 
       const tempoTexto = consulta.dadosVotacao
         ? formatarTempoRestante(consulta.dadosVotacao.tempoRestanteSegundos)
-        : "vota\u00e7\u00e3o ainda n\u00e3o iniciada";
+        : "votação ainda não iniciada";
 
       setMensagemValidacao(
-        `Consulta conclu\u00edda. Validador apto: ${
-          consulta.validadorApto ? "sim" : "n\u00e3o"
-        }. Vota\u00e7\u00e3o aberta: ${
-          consulta.votacaoAberta ? "sim" : "n\u00e3o"
+        `Consulta concluída. Validador apto: ${
+          consulta.validadorApto ? "sim" : "não"
+        }. Votação existe: ${
+          existeVotacao ? "sim" : "não"
+        }. Votação aberta: ${
+          consulta.votacaoAberta ? "sim" : "não"
         }. Total de votos: ${
           consulta.totalVotos
         }. Tempo restante: ${tempoTexto}.`
@@ -339,7 +349,7 @@ function PainelValidacaoProjetos({
         setVotacaoExiste(false);
 
         setMensagemValidacao(
-          "Este projeto est\u00e1 em an\u00e1lise, mas ainda n\u00e3o possui vota\u00e7\u00e3o criada na blockchain. Clique em Iniciar vota\u00e7\u00e3o antes de aprovar ou rejeitar."
+          "Este projeto ainda não possui votação criada na blockchain. Clique em Iniciar votação antes de aprovar ou rejeitar."
         );
 
         return;
@@ -353,7 +363,7 @@ function PainelValidacaoProjetos({
 
   async function sincronizarStatusProjetoSelecionado() {
     if (!idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain v\u00e1lido.");
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
       return;
     }
 
@@ -385,20 +395,23 @@ function PainelValidacaoProjetos({
 
   async function iniciarVotacaoSelecionada() {
     if (!idProjetoBlockchain || !projetoSelecionado) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain v\u00e1lido.");
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
       return;
     }
 
-    if (projetoSelecionado.status !== STATUS_ANALISE) {
+    if (
+      projetoSelecionado.status !== STATUS_PENDENTE &&
+      projetoSelecionado.status !== STATUS_ANALISE
+    ) {
       setMensagemValidacao(
-        "A vota\u00e7\u00e3o s\u00f3 pode ser iniciada para projetos com status Em an\u00e1lise."
+        "A votação só pode ser iniciada para projetos pendentes de validação ou para projetos em análise sem votação criada."
       );
       return;
     }
 
     if (votacaoExiste === true) {
       setMensagemValidacao(
-        "A vota\u00e7\u00e3o deste projeto j\u00e1 existe. Clique em Verificar aptid\u00e3o e depois aprove ou rejeite."
+        "A votação deste projeto já existe. Clique em Verificar aptidão e depois aprove ou rejeite."
       );
       return;
     }
@@ -412,7 +425,7 @@ function PainelValidacaoProjetos({
       await solicitarContaMetaMask();
 
       setMensagemValidacao(
-        "Solicitando in\u00edcio da vota\u00e7\u00e3o. Confirme a transa\u00e7\u00e3o na MetaMask..."
+        "Solicitando início da votação. Confirme a transação na MetaMask..."
       );
 
       const resultado = await iniciarVotacaoProjeto(idProjetoBlockchain);
@@ -421,7 +434,7 @@ function PainelValidacaoProjetos({
       onAtualizarStatusProjeto(idProjetoBlockchain, STATUS_ANALISE);
 
       setMensagemValidacao(
-        `Vota\u00e7\u00e3o iniciada para o projeto ${idProjetoBlockchain}. Hash: ${resultado.hash}. Agora clique em Verificar aptid\u00e3o e depois aprove ou rejeite.`
+        `Votação iniciada para o projeto ${idProjetoBlockchain}. Hash: ${resultado.hash}. Agora clique em Verificar aptidão e depois aprove ou rejeite.`
       );
 
       await consultarProjeto();
@@ -431,7 +444,7 @@ function PainelValidacaoProjetos({
         onAtualizarStatusProjeto(idProjetoBlockchain, STATUS_ANALISE);
 
         setMensagemValidacao(
-          "A vota\u00e7\u00e3o j\u00e1 estava iniciada na blockchain. Clique em Verificar aptid\u00e3o para atualizar os dados e votar."
+          "A votação já estava iniciada na blockchain. Clique em Verificar aptidão para atualizar os dados e votar."
         );
 
         return;
@@ -442,7 +455,7 @@ function PainelValidacaoProjetos({
       }
 
       setMensagemValidacao(
-        `Erro ao iniciar vota\u00e7\u00e3o: ${formatarErro(erro)}`
+        `Erro ao iniciar votação: ${formatarErro(erro)}`
       );
     } finally {
       setExecutando(false);
@@ -451,13 +464,13 @@ function PainelValidacaoProjetos({
 
   async function aprovarProjetoSelecionado() {
     if (!projetoSelecionado || !idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain v\u00e1lido.");
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
       return;
     }
 
     if (!podeVotar) {
       setMensagemValidacao(
-        "A vota\u00e7\u00e3o ainda n\u00e3o est\u00e1 aberta para este projeto. Primeiro clique em Iniciar vota\u00e7\u00e3o e depois em Verificar aptid\u00e3o."
+        "A votação ainda não está aberta para este projeto. Primeiro clique em Iniciar votação e depois em Verificar aptidão."
       );
       return;
     }
@@ -466,7 +479,7 @@ function PainelValidacaoProjetos({
       setExecutando(true);
 
       setMensagemValidacao(
-        `Aprovando projeto ${idProjetoBlockchain} com ${projetoSelecionado.creditosSolicitados} cr\u00e9ditos.`
+        `Aprovando projeto ${idProjetoBlockchain} com ${projetoSelecionado.creditosSolicitados} créditos.`
       );
 
       const resultado = await votarProjetoValidacao({
@@ -478,7 +491,7 @@ function PainelValidacaoProjetos({
       onAtualizarStatusProjeto(idProjetoBlockchain, STATUS_ANALISE);
 
       setMensagemValidacao(
-        `Voto de aprova\u00e7\u00e3o enviado. Hash: ${resultado.hash}. Aguarde o prazo terminar para encerrar a vota\u00e7\u00e3o.`
+        `Voto de aprovação enviado. Hash: ${resultado.hash}. Aguarde o prazo terminar para encerrar a votação.`
       );
 
       await consultarProjeto();
@@ -488,7 +501,7 @@ function PainelValidacaoProjetos({
         setVotacaoExiste(false);
 
         setMensagemValidacao(
-          "Erro ao aprovar projeto: a vota\u00e7\u00e3o ainda n\u00e3o existe na blockchain. Clique em Iniciar vota\u00e7\u00e3o antes de votar."
+          "Erro ao aprovar projeto: a votação ainda não existe na blockchain. Clique em Iniciar votação antes de votar."
         );
 
         return;
@@ -502,13 +515,13 @@ function PainelValidacaoProjetos({
 
   async function rejeitarProjetoSelecionado() {
     if (!idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain v\u00e1lido.");
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
       return;
     }
 
     if (!podeVotar) {
       setMensagemValidacao(
-        "A vota\u00e7\u00e3o ainda n\u00e3o est\u00e1 aberta para este projeto. Primeiro clique em Iniciar vota\u00e7\u00e3o e depois em Verificar aptid\u00e3o."
+        "A votação ainda não está aberta para este projeto. Primeiro clique em Iniciar votação e depois em Verificar aptidão."
       );
       return;
     }
@@ -527,7 +540,7 @@ function PainelValidacaoProjetos({
       onAtualizarStatusProjeto(idProjetoBlockchain, STATUS_ANALISE);
 
       setMensagemValidacao(
-        `Voto de rejei\u00e7\u00e3o enviado. Hash: ${resultado.hash}. Aguarde o prazo terminar para encerrar a vota\u00e7\u00e3o.`
+        `Voto de rejeição enviado. Hash: ${resultado.hash}. Aguarde o prazo terminar para encerrar a votação.`
       );
 
       await consultarProjeto();
@@ -537,7 +550,7 @@ function PainelValidacaoProjetos({
         setVotacaoExiste(false);
 
         setMensagemValidacao(
-          "Erro ao rejeitar projeto: a vota\u00e7\u00e3o ainda n\u00e3o existe na blockchain. Clique em Iniciar vota\u00e7\u00e3o antes de votar."
+          "Erro ao rejeitar projeto: a votação ainda não existe na blockchain. Clique em Iniciar votação antes de votar."
         );
 
         return;
@@ -551,13 +564,13 @@ function PainelValidacaoProjetos({
 
   async function encerrarVotacaoSelecionada() {
     if (!idProjetoBlockchain) {
-      setMensagemValidacao("Selecione um projeto com ID blockchain v\u00e1lido.");
+      setMensagemValidacao("Selecione um projeto com ID blockchain válido.");
       return;
     }
 
     if (!podeEncerrar) {
       setMensagemValidacao(
-        "A vota\u00e7\u00e3o ainda n\u00e3o pode ser encerrada. Consulte o projeto e aguarde o tempo restante chegar a zero."
+        "A votação ainda não pode ser encerrada. Consulte o projeto e aguarde o tempo restante chegar a zero."
       );
       return;
     }
@@ -566,7 +579,7 @@ function PainelValidacaoProjetos({
       setExecutando(true);
 
       setMensagemValidacao(
-        `Encerrando vota\u00e7\u00e3o do projeto ${idProjetoBlockchain}...`
+        `Encerrando votação do projeto ${idProjetoBlockchain}...`
       );
 
       const resultado = await encerrarVotacaoProjeto(idProjetoBlockchain);
@@ -587,17 +600,17 @@ function PainelValidacaoProjetos({
       }
 
       setMensagemValidacao(
-        `Vota\u00e7\u00e3o encerrada. Hash: ${resultado.hash}. Estado na blockchain: ${estadoReal.estadoCodigo}. Aprovado: ${
-          estadoReal.aprovado ? "sim" : "n\u00e3o"
+        `Votação encerrada. Hash: ${resultado.hash}. Estado na blockchain: ${estadoReal.estadoCodigo}. Aprovado: ${
+          estadoReal.aprovado ? "sim" : "não"
         }. Status atualizado: ${estadoReal.statusSugerido}.`
       );
 
       await consultarProjeto();
     } catch (erro) {
       setMensagemValidacao(
-        `Erro ao encerrar vota\u00e7\u00e3o: ${formatarErro(
+        `Erro ao encerrar votação: ${formatarErro(
           erro
-        )}. Se a mensagem indicar vota\u00e7\u00e3o ainda aberta, aguarde o fim do prazo exibido na tela.`
+        )}. Se a mensagem indicar votação ainda aberta, aguarde o fim do prazo exibido na tela.`
       );
     } finally {
       setExecutando(false);
@@ -621,10 +634,10 @@ function PainelValidacaoProjetos({
               <th>{"ID blockchain"}</th>
               <th>{"Projeto"}</th>
               <th>{"Tipo"}</th>
-              <th>{"Localiza\u00e7\u00e3o"}</th>
-              <th>{"Cr\u00e9ditos"}</th>
+              <th>{"Localização"}</th>
+              <th>{"Créditos"}</th>
               <th>{"Status"}</th>
-              <th>{"A\u00e7\u00e3o"}</th>
+              <th>{"Ação"}</th>
             </tr>
           </thead>
 
@@ -663,11 +676,11 @@ function PainelValidacaoProjetos({
     <section className="form-card">
       <div className="section-title">
         <div>
-          <span className="badge">{"VALIDA\u00c7\u00c3O MVP"}</span>
-          <h3>{"Projetos para valida\u00e7\u00e3o e acompanhamento"}</h3>
+          <span className="badge">{"VALIDAÇÃO MVP"}</span>
+          <h3>{"Projetos para validação e acompanhamento"}</h3>
           <p>
             {
-              "A vota\u00e7\u00e3o deve ser iniciada apenas para projetos com status Em an\u00e1lise. Depois disso, o validador pode votar e, ao final do prazo, encerrar a vota\u00e7\u00e3o."
+              "A votação deve ser iniciada para projetos pendentes de validação. Depois disso, o projeto passa para Em análise, o validador pode votar e, ao final do prazo, encerrar a votação."
             }
           </p>
         </div>
@@ -688,17 +701,17 @@ function PainelValidacaoProjetos({
 
       {projetosAcompanhaveis.length === 0 ? (
         <div className="empty-state">
-          {"Nenhum projeto com ID blockchain dispon\u00edvel para acompanhamento."}
+          {"Nenhum projeto com ID blockchain disponível para acompanhamento."}
         </div>
       ) : (
         <>
           <div className="section-title">
             <div>
               <span className="badge">{"Todos"}</span>
-              <h3>{"Todos os projetos acompanh\u00e1veis"}</h3>
+              <h3>{"Todos os projetos acompanháveis"}</h3>
               <p>
                 {
-                  "Lista geral dos projetos com ID blockchain, exceto aqueles que j\u00e1 tiveram cr\u00e9ditos emitidos."
+                  "Lista geral dos projetos com ID blockchain, exceto aqueles que já tiveram créditos emitidos."
                 }
               </p>
             </div>
@@ -709,10 +722,10 @@ function PainelValidacaoProjetos({
           <div className="section-title">
             <div>
               <span className="badge">{"Pendentes"}</span>
-              <h3>{"Projetos pendentes de valida\u00e7\u00e3o"}</h3>
+              <h3>{"Projetos pendentes de validação"}</h3>
               <p>
                 {
-                  "Projetos cadastrados que ainda n\u00e3o est\u00e3o em an\u00e1lise. A vota\u00e7\u00e3o n\u00e3o deve ser iniciada aqui."
+                  "Projetos cadastrados na blockchain que ainda não possuem votação criada. Estes são os projetos aptos para iniciar votação."
                 }
               </p>
             </div>
@@ -722,11 +735,11 @@ function PainelValidacaoProjetos({
 
           <div className="section-title">
             <div>
-              <span className="badge">{"Em an\u00e1lise"}</span>
-              <h3>{"Projetos em an\u00e1lise"}</h3>
+              <span className="badge">{"Em análise"}</span>
+              <h3>{"Projetos em análise"}</h3>
               <p>
                 {
-                  "Projetos aptos para abertura de vota\u00e7\u00e3o, voto e posterior encerramento."
+                  "Projetos com votação criada ou projetos que precisam ser sincronizados com a blockchain."
                 }
               </p>
             </div>
@@ -738,7 +751,7 @@ function PainelValidacaoProjetos({
             <div>
               <span className="badge">{"Aprovados"}</span>
               <h3>{"Projetos aprovados"}</h3>
-              <p>{"Projetos que j\u00e1 passaram pela vota\u00e7\u00e3o."}</p>
+              <p>{"Projetos que já passaram pela votação."}</p>
             </div>
           </div>
 
@@ -748,7 +761,7 @@ function PainelValidacaoProjetos({
             <div>
               <span className="badge">{"Rejeitados"}</span>
               <h3>{"Projetos rejeitados"}</h3>
-              <p>{"Projetos que j\u00e1 passaram pela vota\u00e7\u00e3o."}</p>
+              <p>{"Projetos que já passaram pela votação."}</p>
             </div>
           </div>
 
@@ -761,7 +774,7 @@ function PainelValidacaoProjetos({
                   <span className="badge">{"Projeto selecionado"}</span>
                   <h3>{projetoSelecionado.nome}</h3>
                   <p>
-                    {`ID blockchain: ${projetoSelecionado.idProjetoBlockchain} | Cr\u00e9ditos solicitados: ${projetoSelecionado.creditosSolicitados} | Status local: ${projetoSelecionado.status}`}
+                    {`ID blockchain: ${projetoSelecionado.idProjetoBlockchain} | Créditos solicitados: ${projetoSelecionado.creditosSolicitados} | Status local: ${projetoSelecionado.status}`}
                   </p>
                 </div>
               </div>
@@ -773,7 +786,7 @@ function PainelValidacaoProjetos({
                   disabled={executando || sincronizandoTodos}
                   onClick={() => void consultarProjeto()}
                 >
-                  {"Verificar aptid\u00e3o"}
+                  {"Verificar aptidão"}
                 </button>
 
                 <button
@@ -795,7 +808,7 @@ function PainelValidacaoProjetos({
                   }
                   onClick={() => void iniciarVotacaoSelecionada()}
                 >
-                  {"Iniciar vota\u00e7\u00e3o"}
+                  {"Iniciar votação"}
                 </button>
 
                 <button
@@ -822,19 +835,19 @@ function PainelValidacaoProjetos({
                   disabled={executando || sincronizandoTodos || !podeEncerrar}
                   onClick={() => void encerrarVotacaoSelecionada()}
                 >
-                  {"Encerrar vota\u00e7\u00e3o"}
+                  {"Encerrar votação"}
                 </button>
               </div>
 
               <div className="status-grid">
                 <div>
-                  <span>{"Vota\u00e7\u00e3o existe?"}</span>
+                  <span>{"Votação existe?"}</span>
                   <strong>
                     {votacaoExiste === null
-                      ? "N\u00e3o verificado"
+                      ? "Não verificado"
                       : votacaoExiste
                       ? "Sim"
-                      : "N\u00e3o"}
+                      : "Não"}
                   </strong>
                 </div>
 
@@ -849,14 +862,14 @@ function PainelValidacaoProjetos({
                   <div>
                     <span>{"Validador apto"}</span>
                     <strong>
-                      {resultadoConsulta.validadorApto ? "Sim" : "N\u00e3o"}
+                      {resultadoConsulta.validadorApto ? "Sim" : "Não"}
                     </strong>
                   </div>
 
                   <div>
-                    <span>{"Vota\u00e7\u00e3o aberta"}</span>
+                    <span>{"Votação aberta"}</span>
                     <strong>
-                      {resultadoConsulta.votacaoAberta ? "Sim" : "N\u00e3o"}
+                      {resultadoConsulta.votacaoAberta ? "Sim" : "Não"}
                     </strong>
                   </div>
 
@@ -868,7 +881,7 @@ function PainelValidacaoProjetos({
                   {resultadoConsulta.dadosVotacao && (
                     <>
                       <div>
-                        <span>{"In\u00edcio da vota\u00e7\u00e3o"}</span>
+                        <span>{"Início da votação"}</span>
                         <strong>
                           {formatarDataHoraUnix(
                             resultadoConsulta.dadosVotacao.inicioVotacao
@@ -877,7 +890,7 @@ function PainelValidacaoProjetos({
                       </div>
 
                       <div>
-                        <span>{"Fim da vota\u00e7\u00e3o"}</span>
+                        <span>{"Fim da votação"}</span>
                         <strong>
                           {formatarDataHoraUnix(
                             resultadoConsulta.dadosVotacao.fimVotacao
@@ -894,22 +907,22 @@ function PainelValidacaoProjetos({
                         <span>{"Pode encerrar?"}</span>
                         <strong>
                           {resultadoConsulta.dadosVotacao.encerrada
-                            ? "J\u00e1 encerrada"
+                            ? "Já encerrada"
                             : tempoRestanteTela <= 0
                             ? "Sim"
-                            : "Ainda n\u00e3o"}
+                            : "Ainda não"}
                         </strong>
                       </div>
 
                       <div>
-                        <span>{"Votos de aprova\u00e7\u00e3o"}</span>
+                        <span>{"Votos de aprovação"}</span>
                         <strong>
                           {resultadoConsulta.dadosVotacao.votosAprovacao}
                         </strong>
                       </div>
 
                       <div>
-                        <span>{"Votos de rejei\u00e7\u00e3o"}</span>
+                        <span>{"Votos de rejeição"}</span>
                         <strong>
                           {resultadoConsulta.dadosVotacao.votosRejeicao}
                         </strong>

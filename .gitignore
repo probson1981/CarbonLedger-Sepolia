@@ -1,25 +1,37 @@
+# Dependências
 node_modules/
 frontend/node_modules/
 
+# Builds
+dist/
+frontend/dist/
+build/
+coverage/
+
+# Hardhat
+artifacts/
+cache/
+typechain-types/
+
+# Ambientes e segredos
 .env
 .env.*
 !.env.example
 
-dist/
-build/
-frontend/dist/
+# Backups locais
+*.backup-*.ts
+*.backup-*.tsx
+*.backup-*.js
+*.backup-*.json
+backups_autores_*/
 
-coverage/
-cache/
-artifacts/
-typechain-types/
+# Debug local
+scripts/debug_*.ts
+scripts/debug_*.mjs
 
+# Sistema operacional e editor
 .DS_Store
-
-carteiras/
-deployments_old/
-
-scan-*.txt
-scan-*.csv
+Thumbs.db
+.vscode/
 
 backups_autores_20260605-192647/

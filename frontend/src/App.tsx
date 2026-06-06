@@ -12,7 +12,6 @@ import {
   calcularCompraOferta,
   cancelarOfertaCreditos,
   comprarCreditosOferta,
-  consultarSaldoCreditoMarketplace,
   criarOfertaCreditos,
   listarOfertas,
   verificarMarketplaceAprovado,
@@ -1015,6 +1014,38 @@ function PainelPorPerfil({
   return null;
 }
 
+async function obterContaAtualMetaMaskObrigatoria(): Promise<string> {
+  const ethereum = obterEthereum();
+
+  if (!ethereum) {
+    throw new Error("MetaMask não encontrada. Instale ou habilite a extensão.");
+  }
+
+  const contas = await ethereum.request({
+    method: "eth_requestAccounts",
+  });
+
+  const contaAtual = obterPrimeiraConta(contas);
+
+  if (!contaAtual) {
+    throw new Error("Nenhuma conta foi retornada pela MetaMask.");
+  }
+
+  return contaAtual;
+}
+
+async function consultarSaldoRealCreditoCarbono(params: {
+  idLote: string | number | bigint;
+  carteira?: string;
+}): Promise<string> {
+  const carteira = params.carteira || (await obterContaAtualMetaMaskObrigatoria());
+
+  return consultarSaldoLote({
+    carteira,
+    idLote: params.idLote,
+  });
+}
+
 function PainelAposentadoriaCertificados({
   focoInicial,
 }: {
@@ -1048,6 +1079,8 @@ function PainelAposentadoriaCertificados({
   async function carregarLotesCreditoComprador(): Promise<
     LoteCreditoCompradorTela[]
   > {
+    const contaComprador = await obterContaAtualMetaMaskObrigatoria();
+
     const ofertas = await listarOfertas({
       apenasDisponiveis: false,
       limite: 100,
@@ -1096,7 +1129,8 @@ function PainelAposentadoriaCertificados({
 
     const consultas = lotes.map(async (lote) => {
       const [saldoComprador, totalAposentadoNoLote] = await Promise.all([
-        consultarSaldoCreditoMarketplace({
+        consultarSaldoRealCreditoCarbono({
+          carteira: contaComprador,
           idLote: lote.idLote,
         }),
         consultarTotalAposentadoPorLote(lote.idLote),
@@ -1201,11 +1235,19 @@ function PainelAposentadoriaCertificados({
       setExecutando(true);
       setMensagemAposentadoria("Consultando saldo do comprador no lote...");
 
-      const saldo = await consultarSaldoCreditoMarketplace({ idLote });
+      const contaComprador = await obterContaAtualMetaMaskObrigatoria();
+      const saldo = await consultarSaldoRealCreditoCarbono({
+        carteira: contaComprador,
+        idLote,
+      });
 
       setSaldoLote(saldo);
 
-      setMensagemAposentadoria(`Saldo do comprador no lote ${idLote}: ${saldo}.`);
+      setMensagemAposentadoria(
+        `Saldo real ERC-1155 da carteira ${encurtarEndereco(
+          contaComprador
+        )} no lote ${idLote}: ${saldo}.`
+      );
     } catch (erro) {
       setMensagemAposentadoria(`Erro ao consultar saldo: ${formatarErro(erro)}`);
     } finally {
@@ -1221,13 +1263,6 @@ function PainelAposentadoriaCertificados({
 
     if (!quantidade || Number(quantidade) <= 0) {
       setMensagemAposentadoria("Informe uma quantidade válida para aposentadoria.");
-      return;
-    }
-
-    if (saldoLote && BigInt(saldoLote) < BigInt(quantidade)) {
-      setMensagemAposentadoria(
-        `Saldo insuficiente no lote ${idLote}. Saldo: ${saldoLote}. Quantidade solicitada: ${quantidade}.`
-      );
       return;
     }
 
@@ -1248,6 +1283,24 @@ function PainelAposentadoriaCertificados({
 
     try {
       setExecutando(true);
+
+      const contaComprador = await obterContaAtualMetaMaskObrigatoria();
+      const saldoRealAntes = await consultarSaldoRealCreditoCarbono({
+        carteira: contaComprador,
+        idLote,
+      });
+
+      setSaldoLote(saldoRealAntes);
+
+      if (BigInt(saldoRealAntes) < BigInt(quantidade)) {
+        setMensagemAposentadoria(
+          `Saldo real insuficiente no ERC-1155 para a carteira ${encurtarEndereco(
+            contaComprador
+          )}. Lote: ${idLote}. Saldo real: ${saldoRealAntes}. Quantidade solicitada: ${quantidade}.`
+        );
+        return;
+      }
+
       setMensagemAposentadoria(
         "Enviando aposentadoria de créditos para a MetaMask..."
       );
@@ -1262,7 +1315,10 @@ function PainelAposentadoriaCertificados({
 
       const [saldoAtualizado, resumoAtualizado, taxaAtualizada, lotesAtualizados] =
         await Promise.all([
-          consultarSaldoCreditoMarketplace({ idLote: resultado.idLote }),
+          consultarSaldoRealCreditoCarbono({
+            carteira: contaComprador,
+            idLote: resultado.idLote,
+          }),
           consultarResumoAposentadoriasComprador({ limite: 50 }),
           consultarTaxaAposentadoria(),
           carregarLotesCreditoComprador(),
@@ -1774,7 +1830,9 @@ function PainelCompraCreditos() {
         quantidade: quantidadeCompra,
       });
 
-      const saldo = await consultarSaldoCreditoMarketplace({
+      const contaComprador = await obterContaAtualMetaMaskObrigatoria();
+      const saldo = await consultarSaldoRealCreditoCarbono({
+        carteira: contaComprador,
         idLote: resultado.idLote,
       });
 
@@ -1802,7 +1860,9 @@ function PainelCompraCreditos() {
       setExecutando(true);
       setMensagemCompra("Consultando saldo do comprador no lote...");
 
-      const saldo = await consultarSaldoCreditoMarketplace({
+      const contaComprador = await obterContaAtualMetaMaskObrigatoria();
+      const saldo = await consultarSaldoRealCreditoCarbono({
+        carteira: contaComprador,
         idLote: ofertaSelecionada.idLote,
       });
 
@@ -2047,8 +2107,13 @@ function PainelOfertaCreditos({ projetos }: { projetos: ProjetoCarbono[] }) {
       setExecutando(true);
       setMensagemOferta("Consultando saldo e aprovação do marketplace...");
 
+      const contaAtual = await obterContaAtualMetaMaskObrigatoria();
+
       const [saldo, aprovado] = await Promise.all([
-        consultarSaldoCreditoMarketplace({ idLote }),
+        consultarSaldoRealCreditoCarbono({
+          carteira: contaAtual,
+          idLote,
+        }),
         verificarMarketplaceAprovado(),
       ]);
 

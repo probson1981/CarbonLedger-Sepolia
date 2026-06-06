@@ -1,4 +1,4 @@
-﻿export type PerfilUsuario =
+export type PerfilUsuario =
   | "administrador"
   | "proponente"
   | "validador"
@@ -7,11 +7,11 @@
   | "nao-autenticado";
 
 export type StatusProjeto =
-  | "Pendente de valida\u00e7\u00e3o"
-  | "Em an\u00e1lise"
+  | "Pendente de validação"
+  | "Em análise"
   | "Aprovado"
   | "Rejeitado"
-  | "Cr\u00e9ditos emitidos";
+  | "Créditos emitidos";
 
 export type AcaoPainel =
   | "inicio"
@@ -25,14 +25,14 @@ export type AcaoPainel =
   | "certificados";
 
 export type StatusOperacaoWeb3 =
-  | "Aguardando a\u00e7\u00e3o"
+  | "Aguardando ação"
   | "Aguardando MetaMask"
-  | "Transa\u00e7\u00e3o enviada"
+  | "Transação enviada"
   | "Confirmada"
   | "Erro";
 
 export type OperacaoWeb3 = {
-  modo: "Blockchain" | "Simula\u00e7\u00e3o local";
+  modo: "Blockchain" | "Simulação local";
   status: StatusOperacaoWeb3;
   contrato: string;
   conta: string;

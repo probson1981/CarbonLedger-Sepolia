@@ -78,7 +78,7 @@ export function formatarErro(erro: unknown) {
     return erro.message;
   }
 
-  return "Erro desconhecido ao executar a operação.";
+  return "Erro desconhecido ao executar a opera\u00e7\u00e3o.";
 }
 
 export function converterChainIdParaDecimal(chainIdHex: unknown): string {
@@ -128,7 +128,7 @@ export function formatarDataHoraUnix(timestampTexto: string) {
   const timestamp = Number(timestampTexto);
 
   if (!Number.isFinite(timestamp) || timestamp <= 0) {
-    return "Não disponível";
+    return "N\u00e3o dispon\u00edvel";
   }
 
   return new Date(timestamp * 1000).toLocaleString("pt-BR");
@@ -136,7 +136,7 @@ export function formatarDataHoraUnix(timestampTexto: string) {
 
 export function formatarTempoRestante(segundos: number) {
   if (!Number.isFinite(segundos) || segundos <= 0) {
-    return "Encerrável agora";
+    return "Encerr\u00e1vel agora";
   }
 
   const minutos = Math.floor(segundos / 60);

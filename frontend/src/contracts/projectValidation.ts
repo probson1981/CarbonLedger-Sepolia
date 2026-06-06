@@ -118,32 +118,79 @@ function obterTimestampAtualSegundos(): number {
   return Math.floor(Date.now() / 1000);
 }
 
+function extrairMensagemErro(erro: unknown): string {
+  if (typeof erro !== "object" || erro === null) {
+    return "Erro desconhecido na validação do projeto.";
+  }
+
+  const erroObj = erro as {
+    reason?: unknown;
+    shortMessage?: unknown;
+    message?: unknown;
+    info?: {
+      error?: {
+        message?: unknown;
+      };
+    };
+  };
+
+  if (typeof erroObj.reason === "string" && erroObj.reason.trim()) {
+    return erroObj.reason;
+  }
+
+  if (
+    typeof erroObj.shortMessage === "string" &&
+    erroObj.shortMessage.trim()
+  ) {
+    return erroObj.shortMessage;
+  }
+
+  if (
+    typeof erroObj.info?.error?.message === "string" &&
+    erroObj.info.error.message.trim()
+  ) {
+    return erroObj.info.error.message;
+  }
+
+  if (typeof erroObj.message === "string" && erroObj.message.trim()) {
+    return erroObj.message;
+  }
+
+  return "Erro desconhecido na validação do projeto.";
+}
+
 function tratarErroValidacao(erro: unknown): Error {
   console.error("Erro bruto na validação do projeto:", erro);
 
-  if (
-    typeof erro === "object" &&
-    erro !== null &&
-    "reason" in erro &&
-    typeof erro.reason === "string"
-  ) {
-    return new Error(erro.reason);
+  const mensagem = extrairMensagemErro(erro);
+
+  if (mensagem.includes("Validador nao apto")) {
+    return new Error(
+      "Validador não apto. Confira se a carteira conectada está cadastrada como validador ativo no contrato RegistroOrganizacoes."
+    );
   }
 
-  if (
-    typeof erro === "object" &&
-    erro !== null &&
-    "shortMessage" in erro &&
-    typeof erro.shortMessage === "string"
-  ) {
-    return new Error(erro.shortMessage);
+  if (mensagem.includes("Contrato nao autorizado")) {
+    return new Error(
+      "Contrato de validação não autorizado no RegistroProjetosCarbono. Execute o setup local para autorizar o ValidacaoProjetos."
+    );
   }
 
-  if (erro instanceof Error) {
-    return erro;
+  if (mensagem.includes("Estado invalido")) {
+    return new Error(
+      "Estado inválido do projeto. Para iniciar votação, o projeto precisa estar no estado Submetido."
+    );
   }
 
-  return new Error("Erro desconhecido na validação do projeto.");
+  if (mensagem.includes("Votacao ja iniciada")) {
+    return new Error("A votação deste projeto já foi iniciada.");
+  }
+
+  if (mensagem.includes("Projeto inexistente")) {
+    return new Error("Projeto inexistente na blockchain.");
+  }
+
+  return new Error(mensagem);
 }
 
 async function obterProviderEChainId() {
@@ -219,27 +266,50 @@ function sugerirStatusProjeto(params: {
 }): StatusProjetoBlockchain {
   const { estadoCodigo, aprovado, emitido } = params;
 
-  if (emitido) {
+  if (emitido || estadoCodigo === "5") {
     return "Créditos emitidos";
   }
 
-  if (aprovado) {
+  if (aprovado || estadoCodigo === "3") {
     return "Aprovado";
   }
 
-  if (estadoCodigo === "2") {
+  if (estadoCodigo === "4") {
     return "Rejeitado";
   }
 
-  if (estadoCodigo === "1") {
+  if (estadoCodigo === "2") {
     return "Em análise";
   }
 
-  if (estadoCodigo === "0") {
+  if (estadoCodigo === "1") {
     return "Pendente de validação";
   }
 
   return "Desconhecido";
+}
+
+function descreverEstadoProjeto(estadoCodigo: string): string {
+  switch (estadoCodigo) {
+    case "0":
+      return "Rascunho";
+    case "1":
+      return "Submetido";
+    case "2":
+      return "Em votação";
+    case "3":
+      return "Aprovado";
+    case "4":
+      return "Rejeitado";
+    case "5":
+      return "Emitido";
+    case "6":
+      return "Suspenso";
+    case "7":
+      return "Revogado";
+    default:
+      return "Desconhecido";
+  }
 }
 
 function converterDadosVotacao(votacao: unknown): DadosVotacaoProjeto | null {
@@ -367,6 +437,7 @@ export async function consultarEstadoProjetoBlockchain(
     console.log("Estado real do projeto na blockchain:", {
       idProjeto: id.toString(),
       estadoCodigo,
+      estadoTexto: descreverEstadoProjeto(estadoCodigo),
       aprovado,
       emitido,
       creditosSolicitados: creditosSolicitados.toString(),
@@ -391,12 +462,35 @@ export async function iniciarVotacaoProjeto(
 ): Promise<ResultadoTransacaoValidacao> {
   try {
     const id = validarIdProjeto(idProjeto);
+
+    const estadoProjeto = await consultarEstadoProjetoBlockchain(id);
+
+    if (estadoProjeto.estadoCodigo !== "1") {
+      throw new Error(
+        `Não é possível iniciar votação. Estado atual do projeto: ${descreverEstadoProjeto(
+          estadoProjeto.estadoCodigo
+        )} código ${estadoProjeto.estadoCodigo}. O estado necessário é Submetido código 1.`
+      );
+    }
+
     const contrato = await obterContratoValidacao(true);
+    const contaAtual = await obterContaAtualMetaMask();
+
+    const apto = await contrato.validadorApto(contaAtual);
+
+    if (!apto) {
+      throw new Error(
+        `Validador não apto para iniciar votação. Conta conectada: ${contaAtual}.`
+      );
+    }
+
+    await contrato.iniciarVotacao.estimateGas(id);
 
     const tx = await contrato.iniciarVotacao(id);
 
     console.log("Votação iniciada:", {
       idProjeto: id.toString(),
+      contaAtual,
       hash: tx.hash,
     });
 
@@ -425,11 +519,23 @@ export async function votarProjetoValidacao(params: {
       : 0n;
 
     const contrato = await obterContratoValidacao(true);
+    const contaAtual = await obterContaAtualMetaMask();
+
+    const apto = await contrato.validadorApto(contaAtual);
+
+    if (!apto) {
+      throw new Error(
+        `Validador não apto para votar. Conta conectada: ${contaAtual}.`
+      );
+    }
+
+    await contrato.votarProjeto.estimateGas(id, voto, creditosSugeridos);
 
     const tx = await contrato.votarProjeto(id, voto, creditosSugeridos);
 
     console.log("Voto enviado:", {
       idProjeto: id.toString(),
+      contaAtual,
       voto,
       creditosSugeridos: creditosSugeridos.toString(),
       hash: tx.hash,
@@ -452,6 +558,8 @@ export async function encerrarVotacaoProjeto(
   try {
     const id = validarIdProjeto(idProjeto);
     const contrato = await obterContratoValidacao(true);
+
+    await contrato.encerrarVotacao.estimateGas(id);
 
     const tx = await contrato.encerrarVotacao(id);
 
