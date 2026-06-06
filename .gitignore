@@ -34,4 +34,10 @@ scripts/debug_*.mjs
 Thumbs.db
 .vscode/
 
+# Backups locais
+*.backup-*.ts
+*.backup-*.tsx
+*.backup-*.js
+*.backup-*.json
+
 backups_autores_20260605-192647/
