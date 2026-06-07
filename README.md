@@ -1,6 +1,6 @@
 # CarbonLedger
 
-## Registro, validação, negociação e aposentadoria de créditos de carbono em blockchain
+## Registro, validação, negociação, aposentadoria e certificação de créditos de carbono em blockchain
 
 **Autores:**
 
@@ -14,11 +14,11 @@ Projeto desenvolvido para o **Hackathon Web 3.0 do IREDE**.
 
 ## 1. Visão geral
 
-O **CarbonLedger** é uma aplicação Web3 desenvolvida para demonstrar, em ambiente local, um fluxo mínimo de registro, validação, emissão, comercialização, aposentadoria e certificação de créditos de carbono usando blockchain e smart contracts.
+O **CarbonLedger** é uma aplicação Web3 desenvolvida para demonstrar um fluxo mínimo de registro, validação, emissão, comercialização, aposentadoria e certificação de créditos de carbono usando blockchain e smart contracts.
 
 A proposta do projeto é simular uma infraestrutura descentralizada para rastrear créditos ambientais desde a submissão de um projeto de carbono até a emissão de créditos tokenizados, sua negociação em marketplace e sua posterior aposentadoria com emissão de certificado NFT.
 
-O sistema foi construído como um **MVP**, ou seja, uma versão mínima funcional capaz de demonstrar o ciclo principal da aplicação.
+O sistema foi construído como um **MVP**, ou seja, uma versão mínima funcional capaz de demonstrar o ciclo principal da aplicação em ambiente local Hardhat e em rede pública de testes Sepolia.
 
 ---
 
@@ -48,9 +48,10 @@ O objetivo do CarbonLedger é demonstrar um fluxo Web3 mínimo para:
 2. validar projetos por meio de votação;
 3. emitir créditos de carbono tokenizados;
 4. ofertar créditos em marketplace;
-5. comprar créditos usando ETH em rede local;
+5. comprar créditos usando ETH de teste;
 6. aposentar créditos comprados;
-7. emitir certificado NFT de compensação.
+7. emitir certificado NFT de compensação;
+8. visualizar contratos, transações e NFTs na Sepolia.
 
 ---
 
@@ -62,8 +63,9 @@ O MVP implementa um ciclo funcional simplificado com os seguintes perfis:
 
 Responsável por:
 
-* implantar e configurar o protocolo;
+* operar funções administrativas do protocolo;
 * emitir créditos de carbono para projetos aprovados;
+* receber o ownership do contrato `CreditoCarbonoToken` após o deploy;
 * consultar contratos e permissões do sistema.
 
 ### Proponente
@@ -111,6 +113,8 @@ O projeto utiliza:
 * Node.js
 * PowerShell
 * Git e GitHub
+* Sepolia
+* Sepolia Etherscan
 
 ---
 
@@ -121,10 +125,11 @@ contracts
 scripts
 test
 frontend
-frontend/src
-frontend/src/config
-frontend/src/contracts
-frontend/src/components
+frontend\src
+frontend\src\config
+frontend\src\contracts
+frontend\src\components
+deployments
 ```
 
 Principais contratos:
@@ -142,6 +147,7 @@ RegistroAposentadorias.sol
 StakingCarbono.sol
 GovernancaCarbono.sol
 AdaptadorOraculoChainlink.sol
+MockPriceFeedChainlink.sol
 ```
 
 ---
@@ -171,7 +177,7 @@ Compra dos créditos pelo comprador
         ↓
 Aposentadoria dos créditos
         ↓
-Emissão de certificado NFT
+Emissão de certificado NFT ERC-721
 ```
 
 ---
@@ -196,9 +202,9 @@ Token ERC-721 usado para representar o certificado de compensação emitido apó
 
 ## 9. Marketplace
 
-O marketplace permite que o proponente oferte créditos de carbono emitidos e que compradores adquiram esses créditos usando ETH da rede local Hardhat.
+O marketplace permite que o proponente oferte créditos de carbono emitidos e que compradores adquiram esses créditos usando ETH de teste.
 
-No MVP, o comprador paga em ETH fictício local. O contrato de marketplace calcula:
+No MVP, o contrato de marketplace calcula:
 
 * valor total da compra;
 * taxa do marketplace;
@@ -206,8 +212,8 @@ No MVP, o comprador paga em ETH fictício local. O contrato de marketplace calcu
 
 Após a compra:
 
-* o saldo ETH local do comprador diminui;
-* o saldo ETH local do proponente aumenta;
+* o saldo ETH do comprador diminui;
+* o saldo ETH do proponente aumenta;
 * a taxa é separada conforme regra do marketplace;
 * os créditos ERC-1155 passam para a carteira do comprador.
 
@@ -221,14 +227,28 @@ A aposentadoria representa a retirada definitiva daquele crédito de circulaçã
 
 Ao aposentar créditos, o sistema registra a compensação e emite um certificado NFT associado à operação.
 
+O NFT é emitido pelo contrato:
+
+```text
+CertificadoCompensacaoNFT
+```
+
+Na Sepolia, esse NFT pode ser visualizado pelo Sepolia Etherscan.
+
 ---
 
-## 11. Ambiente local
+## 11. Redes suportadas
 
-O projeto foi testado em ambiente local usando:
+O projeto foi estruturado para funcionar em:
 
 ```text
 Hardhat Localhost
+Sepolia
+```
+
+### Hardhat Localhost
+
+```text
 RPC: http://127.0.0.1:8545
 Chain ID: 31337
 Símbolo: ETH
@@ -236,7 +256,16 @@ Símbolo: ETH
 
 O ETH usado nesse ambiente é fictício e não possui valor real.
 
-Por isso, a MetaMask pode mostrar saldo positivo em ETH e, ao mesmo tempo, exibir valor em dólar igual a zero. Esse comportamento é esperado em redes locais.
+### Sepolia
+
+```text
+Chain ID decimal: 11155111
+Chain ID hexadecimal: 0xaa36a7
+Símbolo: SepoliaETH
+Explorador: Sepolia Etherscan
+```
+
+A rede Sepolia permite visualizar contratos, transações, saldos, eventos e NFTs em um explorador público.
 
 ---
 
@@ -245,8 +274,8 @@ Por isso, a MetaMask pode mostrar saldo positivo em ETH e, ao mesmo tempo, exibi
 Clone o repositório:
 
 ```powershell
-git clone https://github.com/probson1981/CarbonLedger.git
-cd CarbonLedger
+git clone https://github.com/probson1981/CarbonLedger-Sepolia.git
+cd CarbonLedger-Sepolia
 ```
 
 Instale as dependências da raiz:
@@ -297,7 +326,12 @@ SEPOLIA_FUND_AMOUNT_ETH=0.05
 SEPOLIA_MIN_BALANCE_ETH=0.02
 ```
 
-A variável `SEPOLIA_DEPLOYER_PRIVATE_KEY` deve conter a private key da conta que pagará o deploy, o setup, o financiamento das carteiras de teste e a transferência de ownership do contrato `CreditoCarbonoToken`.
+A variável `SEPOLIA_DEPLOYER_PRIVATE_KEY` deve conter a private key da conta que pagará:
+
+* deploy dos contratos;
+* setup dos contratos;
+* financiamento das carteiras de teste;
+* transferência de ownership do contrato `CreditoCarbonoToken` para o Admin.
 
 O arquivo `.env` não deve ser enviado ao GitHub.
 
@@ -573,37 +607,366 @@ npm run dev
 
 ---
 
-## 20. Sequência de teste do MVP
+## 20. Executar ambiente local Hardhat
 
-A sequência mínima de teste é:
+### Terminal 1: iniciar blockchain local
 
-```text
-1. Proponente cadastra projeto.
-2. Validador 1 inicia votação.
-3. Validador 1 vota.
-4. Validador 1 encerra votação.
-5. Admin emite créditos.
-6. Proponente cria oferta no marketplace.
-7. Comprador compra créditos.
-8. Comprador aposenta créditos.
-9. Sistema emite NFT de compensação.
+```powershell
+npx hardhat node --hostname 127.0.0.1
 ```
 
-Ao trocar de papel no frontend, também troque a conta ativa no MetaMask e clique em:
+Esse terminal deve permanecer aberto.
 
-```text
-Sincronizar MetaMask
+### Terminal 2: compilar contratos
+
+```powershell
+npx hardhat compile --force
+```
+
+### Gerar carteiras locais
+
+```powershell
+npx hardhat run .\scripts\gerar_carteiras_locais.ts
+```
+
+### Financiar carteiras locais
+
+```powershell
+npx hardhat run .\scripts\financiar_carteiras_locais.ts --network localhost
+```
+
+### Fazer deploy dos contratos
+
+```powershell
+npx hardhat run .\scripts\deploy_local.ts --network localhost
+```
+
+### Configurar contratos
+
+```powershell
+npx hardhat run .\scripts\setup_local.ts --network localhost
+```
+
+### Sincronizar contratos com o frontend
+
+```powershell
+node .\scripts\sync_frontend_deployments.cjs localhost
 ```
 
 ---
 
-## 21. Scripts Sepolia principais
+## 21. Configuração da MetaMask para ambiente local
+
+Adicione uma rede manual na MetaMask com os seguintes dados:
+
+```text
+Nome da rede: Hardhat Localhost
+RPC URL: http://127.0.0.1:8545
+Chain ID: 31337
+Símbolo: ETH
+```
+
+Importe as contas de teste usando as chaves privadas exibidas pelo Hardhat ao executar:
+
+```powershell
+npx hardhat node --hostname 127.0.0.1
+```
+
+Contas usadas com frequência no teste local:
+
+```text
+Administrador:
+0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+Proponente:
+0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+
+Validador 1:
+0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
+
+Validador 2:
+0x90F79bf6EB2c4f870365E785982E1f101E93b906
+
+Comprador:
+0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65
+```
+
+Essas contas e chaves são apenas para ambiente local. Nunca devem ser usadas em redes reais.
+
+---
+
+## 22. Usuários de demonstração
+
+```text
+Administrador:
+usuário: admin
+senha: admin123
+
+Proponente 1:
+usuário: proponente1
+senha: prop123
+
+Proponente 2:
+usuário: proponente2
+senha: prop456
+
+Validador 1:
+usuário: validador1
+senha: val123
+
+Validador 2:
+usuário: validador2
+senha: val456
+
+Comprador 1:
+usuário: comprador1
+senha: comp123
+
+Comprador 2:
+usuário: comprador2
+senha: comp456
+```
+
+Ao trocar de usuário no frontend, também troque a conta ativa na MetaMask e clique em **Sincronizar MetaMask**.
+
+---
+
+## 23. Teste funcional mínimo
+
+### 23.1 Cadastro do projeto
+
+Perfil:
+
+```text
+proponente1
+prop123
+```
+
+Conta MetaMask:
+
+```text
+Proponente
+```
+
+Passos:
+
+```text
+Submeter Projeto
+Novo projeto
+Enviar para validação
+Confirmar na MetaMask
+```
+
+Resultado esperado:
+
+```text
+Projeto cadastrado na blockchain
+Projeto aparece na lista do proponente
+```
+
+---
+
+### 23.2 Validação
+
+Perfil:
+
+```text
+validador1
+val123
+```
+
+Conta MetaMask:
+
+```text
+Validador 1
+```
+
+Passos:
+
+```text
+Validar projetos
+Sincronizar todos os projetos
+Selecionar projeto em análise
+Iniciar votação
+Confirmar na MetaMask
+Verificar aptidão
+Aprovar ou rejeitar
+Confirmar na MetaMask
+Aguardar prazo de votação
+Encerrar votação
+Confirmar na MetaMask
+```
+
+Resultado esperado:
+
+```text
+Votação criada
+Voto registrado
+Votação encerrada
+Projeto aprovado ou rejeitado
+```
+
+---
+
+### 23.3 Emissão de créditos
+
+Perfil:
+
+```text
+admin
+admin123
+```
+
+Conta MetaMask:
+
+```text
+Admin
+```
+
+Passos:
+
+```text
+Emissão de Créditos
+Selecionar projeto aprovado
+Consultar projeto
+Emitir créditos
+Confirmar na MetaMask
+```
+
+Resultado esperado:
+
+```text
+Créditos ERC-1155 emitidos
+Projeto passa para Créditos emitidos
+Proponente recebe saldo no lote
+```
+
+---
+
+### 23.4 Oferta no marketplace
+
+Perfil:
+
+```text
+proponente1
+prop123
+```
+
+Conta MetaMask:
+
+```text
+Proponente
+```
+
+Passos:
+
+```text
+Ofertar Créditos
+Selecionar projeto com créditos emitidos
+Consultar saldo e aprovação
+Aprovar marketplace
+Confirmar na MetaMask
+Criar oferta
+Confirmar na MetaMask
+```
+
+Resultado esperado:
+
+```text
+Oferta criada no marketplace
+```
+
+---
+
+### 23.5 Compra dos créditos
+
+Perfil:
+
+```text
+comprador1
+comp123
+```
+
+Conta MetaMask:
+
+```text
+Comprador
+```
+
+Passos:
+
+```text
+Comprar créditos
+Atualizar ofertas disponíveis
+Selecionar oferta
+Calcular compra
+Comprar créditos
+Confirmar na MetaMask
+```
+
+Resultado esperado:
+
+```text
+Comprador recebe créditos ERC-1155
+Proponente recebe ETH
+Marketplace separa taxa
+```
+
+---
+
+### 23.6 Aposentadoria e certificado NFT
+
+Perfil:
+
+```text
+comprador1
+comp123
+```
+
+Conta MetaMask:
+
+```text
+Comprador
+```
+
+Passos:
+
+```text
+Aposentar Créditos
+Atualizar meus créditos
+Selecionar lote comprado
+Informar quantidade a aposentar
+Aposentar créditos e emitir NFT
+Confirmar na MetaMask
+Atualizar resumo completo
+```
+
+Resultado esperado:
+
+```text
+Créditos aposentados
+Saldo do comprador reduzido
+Certificado NFT emitido
+NFT visível no Sepolia Etherscan
+```
+
+---
+
+## 24. Scripts Sepolia principais
 
 ### `gerar_carteiras_sepolia.ts`
 
 Gera ou reaproveita carteiras de teste para os papéis do MVP.
 
 Também atualiza o `.env` com os endereços públicos e gera o arquivo `.sepolia-metamask-import.txt`.
+
+Por padrão, não sobrescreve carteiras existentes.
+
+Para forçar novas carteiras:
+
+```powershell
+npx hardhat run .\scripts\gerar_carteiras_sepolia.ts -- --force
+```
 
 ### `financiar_carteiras_sepolia.ts`
 
@@ -631,3 +994,97 @@ frontend\src\config\contratos.ts
 ```
 
 Assim, após cada deploy, o frontend passa a apontar para os contratos recém-implantados.
+
+---
+
+## 25. Sepolia Etherscan
+
+Após o deploy, os contratos aparecem no Sepolia Etherscan.
+
+Os endereços atuais dos contratos ficam registrados em:
+
+```text
+deployments\sepolia.json
+```
+
+O relatório de setup fica registrado em:
+
+```text
+deployments\sepolia.setup.json
+```
+
+A verificação do código-fonte dos contratos no Etherscan pode ser feita posteriormente usando `ETHERSCAN_API_KEY`.
+
+---
+
+## 26. Arquivos que não devem ir para o GitHub
+
+Os arquivos abaixo contêm dados sensíveis ou dependências locais e não devem ser enviados ao repositório:
+
+```text
+.env
+.sepolia-wallets.json
+.sepolia-metamask-import.txt
+node_modules
+frontend\node_modules
+```
+
+O arquivo `.env.example` pode ser enviado, pois contém apenas placeholders.
+
+---
+
+## 27. Limitações do MVP
+
+O CarbonLedger, nesta versão, é um MVP acadêmico e experimental. As principais limitações são:
+
+* ausência de auditoria formal dos smart contracts;
+* ausência de integração com sistemas reais de certificação de carbono;
+* ausência de validação documental ambiental real;
+* ausência de oráculos ambientais reais para medições de emissões;
+* uso de mock para price feed em parte do fluxo de MVP;
+* persistência parcial de alguns dados no navegador;
+* dependência de sincronização manual entre blockchain e frontend em alguns fluxos;
+* marketplace simplificado;
+* governança implementada em nível básico para demonstração;
+* staking simplificado para fins de MVP;
+* controle de identidade e permissões simplificado;
+* URIs IPFS usadas como referências simuladas;
+* ausência de integração com armazenamento descentralizado real no fluxo de teste;
+* ausência de tratamento completo para cenários de produção, escalabilidade e segurança.
+
+---
+
+## 28. Trabalhos futuros
+
+Possíveis evoluções do projeto:
+
+* verificação dos contratos no Sepolia Etherscan;
+* integração com IPFS real;
+* integração com oráculos ambientais;
+* substituição definitiva do mock por price feed externo quando aplicável;
+* melhoria do módulo de governança;
+* melhoria do módulo de staking;
+* auditoria dos contratos inteligentes;
+* integração com padrões reconhecidos de certificação de carbono;
+* painel analítico para rastreabilidade dos créditos;
+* melhoria da arquitetura do frontend;
+* indexação de eventos on-chain;
+* criação de API auxiliar para consulta histórica;
+* melhoria da experiência de usuário;
+* suporte a múltiplos validadores e quóruns mais complexos;
+* relatórios de compensação exportáveis;
+* melhoria da documentação técnica.
+
+---
+
+## 29. Observações finais
+
+O CarbonLedger demonstra como a tecnologia blockchain pode ser aplicada à rastreabilidade de créditos de carbono, oferecendo maior transparência no registro, validação, emissão, negociação e aposentadoria de créditos ambientais.
+
+O projeto não pretende substituir, nesta fase, processos reais de certificação ambiental. Seu objetivo é demonstrar tecnicamente um fluxo Web3 mínimo para um mercado digital de créditos de carbono em ambiente controlado de hackathon e em rede pública de testes.
+
+---
+
+## 30. Licença
+
+Projeto desenvolvido para fins educacionais, experimentais e de demonstração no contexto do Hackathon Web 3.0 do IREDE.
