@@ -201,9 +201,11 @@ export async function cadastrarProjetoCarbono(
     const rede = await obterRedeAtual();
     const chainIdAtual = String(rede.chainId);
 
-    if (chainIdAtual !== "31337") {
+    const redesPermitidas = ["31337", "11155111"];
+
+    if (!redesPermitidas.includes(chainIdAtual)) {
       throw new Error(
-        `Rede incorreta. Selecione Hardhat Localhost na MetaMask. Chain ID atual: ${chainIdAtual}`
+        `Rede incorreta. Selecione Hardhat Localhost ou Sepolia na MetaMask. Chain ID atual: ${chainIdAtual}`
       );
     }
 

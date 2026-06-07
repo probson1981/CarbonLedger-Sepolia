@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+﻿import { ethers } from "ethers";
 import { obterRedeAtual } from "../config/redes";
 import { obterEnderecoContrato } from "../config/contratos";
 
@@ -113,7 +113,7 @@ function validarInteiroPositivo(
   const convertido = BigInt(valor);
 
   if (convertido <= 0n) {
-    throw new Error(`${nomeCampo} inválido.`);
+    throw new Error(`${nomeCampo} invÃ¡lido.`);
   }
 
   return convertido;
@@ -126,20 +126,20 @@ function converterPrecoParaWei(params: {
   if (params.precoPorCreditoWei !== undefined) {
     return validarInteiroPositivo(
       params.precoPorCreditoWei,
-      "Preço por crédito"
+      "PreÃ§o por crÃ©dito"
     );
   }
 
   const precoETH = params.precoPorCreditoETH?.trim();
 
   if (!precoETH) {
-    throw new Error("Informe o preço por crédito em ETH ou em wei.");
+    throw new Error("Informe o preÃ§o por crÃ©dito em ETH ou em wei.");
   }
 
   const precoWei = ethers.parseEther(precoETH);
 
   if (precoWei <= 0n) {
-    throw new Error("Preço por crédito inválido.");
+    throw new Error("PreÃ§o por crÃ©dito invÃ¡lido.");
   }
 
   return precoWei;
@@ -197,15 +197,17 @@ async function obterProviderEChainId() {
   const ethereum = obterEthereum();
 
   if (!ethereum) {
-    throw new Error("MetaMask não encontrada no navegador.");
+    throw new Error("MetaMask nÃ£o encontrada no navegador.");
   }
 
   const rede = await obterRedeAtual();
   const chainIdAtual = String(rede.chainId);
 
-  if (chainIdAtual !== "31337") {
+  const redesPermitidas = ["31337", "11155111"];
+
+  if (!redesPermitidas.includes(chainIdAtual)) {
     throw new Error(
-      `Rede incorreta. Selecione Hardhat Localhost na MetaMask. Chain ID atual: ${chainIdAtual}`
+      `Rede incorreta. Selecione Hardhat Localhost ou Sepolia na MetaMask. Chain ID atual: ${chainIdAtual}`
     );
   }
 
@@ -321,7 +323,7 @@ function extrairEventoOfertaCriada(params: {
   };
 }): ResultadoCriacaoOferta {
   if (!params.receipt) {
-    throw new Error("Recibo da transação não disponível.");
+    throw new Error("Recibo da transaÃ§Ã£o nÃ£o disponÃ­vel.");
   }
 
   for (const log of params.receipt.logs) {
@@ -350,7 +352,7 @@ function extrairEventoOfertaCriada(params: {
     }
   }
 
-  throw new Error("Não foi possível localizar o evento OfertaCriada no recibo.");
+  throw new Error("NÃ£o foi possÃ­vel localizar o evento OfertaCriada no recibo.");
 }
 
 function extrairEventoCreditosComprados(params: {
@@ -358,7 +360,7 @@ function extrairEventoCreditosComprados(params: {
   contratoMercado: ethers.Contract;
 }): ResultadoCompraOferta {
   if (!params.receipt) {
-    throw new Error("Recibo da transação não disponível.");
+    throw new Error("Recibo da transaÃ§Ã£o nÃ£o disponÃ­vel.");
   }
 
   for (const log of params.receipt.logs) {
@@ -393,7 +395,7 @@ function extrairEventoCreditosComprados(params: {
   }
 
   throw new Error(
-    "Não foi possível localizar o evento CreditosComprados no recibo."
+    "NÃ£o foi possÃ­vel localizar o evento CreditosComprados no recibo."
   );
 }
 
@@ -401,7 +403,7 @@ export async function obterContaAtualMetaMask(): Promise<string> {
   const ethereum = obterEthereum();
 
   if (!ethereum) {
-    throw new Error("MetaMask não encontrada no navegador.");
+    throw new Error("MetaMask nÃ£o encontrada no navegador.");
   }
 
   const contas = await ethereum.request({
@@ -446,7 +448,7 @@ export async function aprovarMarketplaceParaCreditos(
       aprovado
     );
 
-    console.log("Aprovação do marketplace enviada:", {
+    console.log("AprovaÃ§Ã£o do marketplace enviada:", {
       marketplace: enderecoMercadoCarbono,
       aprovado,
       hash: tx.hash,
@@ -504,7 +506,7 @@ export async function criarOfertaCreditos(params: {
 
     if (!aprovado) {
       throw new Error(
-        "Marketplace não aprovado. Execute a aprovação ERC-1155 antes de criar a oferta."
+        "Marketplace nÃ£o aprovado. Execute a aprovaÃ§Ã£o ERC-1155 antes de criar a oferta."
       );
     }
 
@@ -527,7 +529,7 @@ export async function criarOfertaCreditos(params: {
       precoPorCredito
     );
 
-    console.log("Criação de oferta enviada:", {
+    console.log("CriaÃ§Ã£o de oferta enviada:", {
       idLote: idLote.toString(),
       quantidade: quantidade.toString(),
       precoPorCreditoWei: precoPorCredito.toString(),
@@ -672,7 +674,7 @@ export async function comprarCreditosOferta(params: {
       value: BigInt(valores.valorTotalWei),
     });
 
-    console.log("Compra de créditos enviada:", {
+    console.log("Compra de crÃ©ditos enviada:", {
       idOferta: idOferta.toString(),
       quantidade: quantidade.toString(),
       valorTotalWei: valores.valorTotalWei,

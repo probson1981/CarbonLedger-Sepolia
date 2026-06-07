@@ -5,21 +5,23 @@
  * @author Patrício Alves
  *
  * @notice
- * Sincroniza os deployments locais e as ABIs dos contratos Solidity
- * com o frontend React/Vite do CarbonLedger.
+ * Sincroniza os deployments e as ABIs dos contratos Solidity
+ * com o frontend React e Vite do CarbonLedger.
  *
  * @dev
- * Este script gera:
+ * Este script gera automaticamente:
  *
  * frontend/src/config/contracts.generated.ts
+ * frontend/src/config/contratos.ts
  *
- * O arquivo gerado contém:
- * - DEPLOYMENTS: endereços atualizados a partir de deployments/localhost.json
- * - ABIS: ABIs extraídas dos artifacts do Hardhat
+ * Uso:
  *
- * Importante:
- * Os endereços vêm de deployments/localhost.json.
- * As ABIs vêm de artifacts/contracts.
+ * node scripts/sync_frontend_deployments.cjs
+ *
+ * ou:
+ *
+ * node scripts/sync_frontend_deployments.cjs localhost
+ * node scripts/sync_frontend_deployments.cjs sepolia
  */
 
 const fs = require("node:fs");
@@ -27,29 +29,48 @@ const path = require("node:path");
 
 const ROOT = process.cwd();
 
-const DEPLOYMENT_LOCALHOST = path.join(
-  ROOT,
-  "deployments",
-  "localhost.json"
-);
+const DEPLOYMENTS_DIR = path.join(ROOT, "deployments");
 
-const ARTIFACTS_CONTRACTS_DIR = path.join(
-  ROOT,
-  "artifacts",
-  "contracts"
-);
+const ARTIFACTS_CONTRACTS_DIR = path.join(ROOT, "artifacts", "contracts");
 
-const FRONTEND_CONFIG_DIR = path.join(
-  ROOT,
-  "frontend",
-  "src",
-  "config"
-);
+const FRONTEND_CONFIG_DIR = path.join(ROOT, "frontend", "src", "config");
 
-const OUTPUT_FILE = path.join(
+const OUTPUT_CONTRACTS_GENERATED = path.join(
   FRONTEND_CONFIG_DIR,
   "contracts.generated.ts"
 );
+
+const OUTPUT_CONTRATOS_TS = path.join(
+  FRONTEND_CONFIG_DIR,
+  "contratos.ts"
+);
+
+const REDES_CONHECIDAS = {
+  localhost: {
+    arquivo: "localhost.json",
+    chainIdPadrao: "31337",
+  },
+  sepolia: {
+    arquivo: "sepolia.json",
+    chainIdPadrao: "11155111",
+  },
+};
+
+const NOMES_CONTRATOS = [
+  "TokenImpactoCarbono",
+  "CreditoCarbonoToken",
+  "CertificadoCompensacaoNFT",
+  "RegistroOrganizacoes",
+  "TesourariaCarbono",
+  "RegistroProjetosCarbono",
+  "ValidacaoProjetos",
+  "MercadoCarbono",
+  "RegistroAposentadorias",
+  "StakingCarbono",
+  "GovernancaCarbono",
+  "MockPriceFeedChainlink",
+  "AdaptadorOraculoChainlink",
+];
 
 function arquivoExiste(caminho) {
   return fs.existsSync(caminho) && fs.statSync(caminho).isFile();
@@ -94,7 +115,7 @@ function listarArquivosRecursivo(pasta) {
   return arquivos;
 }
 
-function normalizarChainId(chainId) {
+function normalizarChainId(chainId, chainIdPadrao) {
   if (typeof chainId === "bigint") {
     return chainId.toString();
   }
@@ -104,10 +125,10 @@ function normalizarChainId(chainId) {
   }
 
   if (typeof chainId === "string") {
-    return chainId;
+    return chainId.trim();
   }
 
-  return "31337";
+  return chainIdPadrao;
 }
 
 function extrairContratosDoDeployment(deployment) {
@@ -125,6 +146,7 @@ function extrairContratosDoDeployment(deployment) {
     "dataDeploy",
     "contas",
     "contratos",
+    "explorador",
   ]);
 
   const contratos = {};
@@ -142,44 +164,101 @@ function extrairContratosDoDeployment(deployment) {
   return contratos;
 }
 
-function carregarDeploymentLocalhost() {
-  if (!arquivoExiste(DEPLOYMENT_LOCALHOST)) {
-    throw new Error(
-      `Arquivo de deployment local não encontrado: ${DEPLOYMENT_LOCALHOST}`
-    );
+function carregarDeployment(nomeRede) {
+  const configRede = REDES_CONHECIDAS[nomeRede];
+
+  if (!configRede) {
+    throw new Error(`Rede não suportada pelo script de sync: ${nomeRede}`);
   }
 
-  const deployment = lerJson(DEPLOYMENT_LOCALHOST);
+  const caminhoDeployment = path.join(DEPLOYMENTS_DIR, configRede.arquivo);
 
-  const chainId = normalizarChainId(deployment.chainId);
+  if (!arquivoExiste(caminhoDeployment)) {
+    console.log(`PULADO: deployment não encontrado para ${nomeRede}.`);
+    console.log(`Arquivo esperado: ${caminhoDeployment}`);
+    console.log("");
+    return null;
+  }
+
+  const deployment = lerJson(caminhoDeployment);
+
+  const chainId = normalizarChainId(
+    deployment.chainId,
+    configRede.chainIdPadrao
+  );
+
   const contratos = extrairContratosDoDeployment(deployment);
 
   if (!contratos || Object.keys(contratos).length === 0) {
     throw new Error(
-      "Nenhum contrato foi encontrado dentro de deployments/localhost.json."
+      `Nenhum contrato foi encontrado dentro de ${configRede.arquivo}.`
     );
   }
 
-  const deployer =
-    deployment.deployer ||
-    deployment.contas?.admin ||
-    "";
+  const deployer = deployment.deployer || deployment.contas?.admin || "";
 
   const geradoEm =
-    deployment.dataDeploy ||
-    deployment.geradoEm ||
-    new Date().toISOString();
+    deployment.dataDeploy || deployment.geradoEm || new Date().toISOString();
 
   return {
-    [chainId]: {
+    nomeRede,
+    chainId,
+    dados: {
       projeto: deployment.projeto || "CarbonLedger",
-      networkName: deployment.rede || deployment.networkName || "localhost",
+      networkName: deployment.rede || deployment.networkName || nomeRede,
       chainId,
       deployer,
       geradoEm,
+      contas: deployment.contas || {},
       contratos,
+      explorador: deployment.explorador || null,
       ...contratos,
     },
+  };
+}
+
+function obterRedesSolicitadas() {
+  const argumento = process.argv[2];
+
+  if (!argumento) {
+    return Object.keys(REDES_CONHECIDAS);
+  }
+
+  const rede = argumento.trim().toLowerCase();
+
+  if (!REDES_CONHECIDAS[rede]) {
+    throw new Error(
+      `Rede inválida: ${argumento}. Use localhost, sepolia ou nenhum argumento.`
+    );
+  }
+
+  return [rede];
+}
+
+function carregarDeployments() {
+  const redesSolicitadas = obterRedesSolicitadas();
+
+  const deploymentsPorChainId = {};
+  const deploymentsPorNomeRede = {};
+
+  for (const nomeRede of redesSolicitadas) {
+    const deployment = carregarDeployment(nomeRede);
+
+    if (!deployment) {
+      continue;
+    }
+
+    deploymentsPorChainId[deployment.chainId] = deployment.dados;
+    deploymentsPorNomeRede[deployment.nomeRede] = deployment.dados;
+  }
+
+  if (Object.keys(deploymentsPorChainId).length === 0) {
+    throw new Error("Nenhum deployment válido foi encontrado.");
+  }
+
+  return {
+    deploymentsPorChainId,
+    deploymentsPorNomeRede,
   };
 }
 
@@ -219,13 +298,17 @@ function carregarAbisDosArtifacts() {
   return abis;
 }
 
-function gerarConteudoTs(deployments, abis) {
+function gerarConteudoContractsGenerated(deployments, abis) {
   return `/* eslint-disable */
 // Arquivo gerado automaticamente.
 // Não edite manualmente.
 //
-// Para atualizar depois de um deploy local, rode:
+// Para atualizar depois de um deploy, rode:
 // node scripts/sync_frontend_deployments.cjs
+//
+// Também é possível sincronizar uma rede específica:
+// node scripts/sync_frontend_deployments.cjs localhost
+// node scripts/sync_frontend_deployments.cjs sepolia
 
 export const DEPLOYMENTS = ${JSON.stringify(deployments, null, 2)} as const;
 
@@ -236,6 +319,115 @@ export type ContractName = keyof typeof ABIS;
 `;
 }
 
+function obterEnderecoContratoOuZero(contratos, nomeContrato) {
+  const endereco = contratos?.[nomeContrato];
+
+  if (typeof endereco === "string" && endereco.startsWith("0x")) {
+    return endereco;
+  }
+
+  return "0x0000000000000000000000000000000000000000";
+}
+
+function gerarBlocoRedeContratos(nomeRede, deployment) {
+  const contratos = deployment?.contratos || {};
+
+  const linhas = NOMES_CONTRATOS.map((nomeContrato) => {
+    const endereco = obterEnderecoContratoOuZero(contratos, nomeContrato);
+    return `    ${nomeContrato}: "${endereco}",`;
+  });
+
+  return `  ${nomeRede}: {\n${linhas.join("\n")}\n  },`;
+}
+
+function gerarConteudoContratosTs(deploymentsPorNomeRede) {
+  const localhost = deploymentsPorNomeRede.localhost || null;
+  const sepolia = deploymentsPorNomeRede.sepolia || null;
+
+  const blocoLocalhost = gerarBlocoRedeContratos("localhost", localhost);
+  const blocoSepolia = gerarBlocoRedeContratos("sepolia", sepolia);
+
+  return `/* eslint-disable */
+// Arquivo gerado automaticamente.
+// Não edite manualmente.
+//
+// Para atualizar depois de um deploy, rode:
+// node scripts/sync_frontend_deployments.cjs
+
+export type NomeRedeSuportada = "localhost" | "sepolia";
+
+export interface EnderecosContratos {
+  TokenImpactoCarbono: string;
+  CreditoCarbonoToken: string;
+  CertificadoCompensacaoNFT: string;
+  RegistroOrganizacoes: string;
+  TesourariaCarbono: string;
+  RegistroProjetosCarbono: string;
+  ValidacaoProjetos: string;
+  MercadoCarbono: string;
+  RegistroAposentadorias: string;
+  StakingCarbono: string;
+  GovernancaCarbono: string;
+  MockPriceFeedChainlink: string;
+  AdaptadorOraculoChainlink: string;
+}
+
+export type IdentificadorRede = NomeRedeSuportada | string | number | bigint;
+
+export const ENDERECO_NAO_CONFIGURADO =
+  "0x0000000000000000000000000000000000000000";
+
+export const ENDERECOS_CONTRATOS: Record<
+  NomeRedeSuportada,
+  EnderecosContratos
+> = {
+${blocoLocalhost}
+
+${blocoSepolia}
+};
+
+export function resolverNomeRede(
+  identificadorRede: IdentificadorRede
+): NomeRedeSuportada {
+  const valor = String(identificadorRede).trim().toLowerCase();
+
+  if (valor === "localhost" || valor === "31337" || valor === "0x7a69") {
+    return "localhost";
+  }
+
+  if (valor === "sepolia" || valor === "11155111" || valor === "0xaa36a7") {
+    return "sepolia";
+  }
+
+  throw new Error(\`Rede não suportada pelo frontend: \${String(identificadorRede)}\`);
+}
+
+export function obterEnderecosContratos(
+  identificadorRede: IdentificadorRede
+): EnderecosContratos {
+  const nomeRede = resolverNomeRede(identificadorRede);
+
+  return ENDERECOS_CONTRATOS[nomeRede];
+}
+
+export function obterEnderecoContrato(
+  identificadorRede: IdentificadorRede,
+  nomeContrato: keyof EnderecosContratos
+): string {
+  const nomeRede = resolverNomeRede(identificadorRede);
+  const endereco = ENDERECOS_CONTRATOS[nomeRede][nomeContrato];
+
+  if (!endereco || endereco === ENDERECO_NAO_CONFIGURADO) {
+    throw new Error(
+      \`Contrato \${String(nomeContrato)} não configurado para a rede \${nomeRede}\`
+    );
+  }
+
+  return endereco;
+}
+`;
+}
+
 function main() {
   console.log("");
   console.log("==============================================");
@@ -243,24 +435,41 @@ function main() {
   console.log("==============================================");
   console.log("");
 
-  const deployments = carregarDeploymentLocalhost();
+  const { deploymentsPorChainId, deploymentsPorNomeRede } = carregarDeployments();
   const abis = carregarAbisDosArtifacts();
 
   criarDiretorioSeNecessario(FRONTEND_CONFIG_DIR);
 
-  const conteudo = gerarConteudoTs(deployments, abis);
+  const conteudoContractsGenerated = gerarConteudoContractsGenerated(
+    deploymentsPorChainId,
+    abis
+  );
 
-  fs.writeFileSync(OUTPUT_FILE, conteudo, "utf8");
+  const conteudoContratosTs = gerarConteudoContratosTs(deploymentsPorNomeRede);
 
-  console.log(`Arquivo gerado: ${OUTPUT_FILE}`);
+  fs.writeFileSync(
+    OUTPUT_CONTRACTS_GENERATED,
+    conteudoContractsGenerated,
+    "utf8"
+  );
+
+  fs.writeFileSync(OUTPUT_CONTRATOS_TS, conteudoContratosTs, "utf8");
+
+  console.log(`Arquivo gerado: ${OUTPUT_CONTRACTS_GENERATED}`);
+  console.log(`Arquivo gerado: ${OUTPUT_CONTRATOS_TS}`);
   console.log("");
 
   console.log("Redes sincronizadas:");
-  console.log(Object.keys(deployments));
+  console.log(Object.keys(deploymentsPorChainId));
 
   console.log("");
-  console.log("Contratos no deployment local:");
-  console.log(Object.keys(deployments["31337"]?.contratos || deployments[Object.keys(deployments)[0]].contratos));
+  console.log("Contratos por rede:");
+
+  for (const [chainId, dados] of Object.entries(deploymentsPorChainId)) {
+    console.log("");
+    console.log(`${dados.networkName} (${chainId}):`);
+    console.log(Object.keys(dados.contratos || {}));
+  }
 
   console.log("");
   console.log("ABIs encontradas:");

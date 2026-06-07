@@ -41,3 +41,4 @@ Thumbs.db
 *.backup-*.json
 
 backups_autores_20260605-192647/
+.sepolia-wallets.json

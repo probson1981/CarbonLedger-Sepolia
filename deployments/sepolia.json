@@ -1,0 +1,34 @@
+{
+  "projeto": "CarbonLedger",
+  "rede": "sepolia",
+  "chainId": "11155111",
+  "dataDeploy": "2026-06-07T00:05:00.787Z",
+  "deployer": "0x8F992da5D0Eec581145E31635Dc23cfc9e937851",
+  "contas": {
+    "admin": "0x05d670FdaF67Fb30c0EEf612b8fCC794E6C134d6",
+    "proponente": "0x4E2A7Ab294A740A9e25fFf3D777F7c5ac876a404",
+    "validador1": "0x5B4550d09803723Db82F5216C53Ec829B3E665b2",
+    "validador2": "0x88D2C2Da864801a74a8178B590131494B8BC61EB",
+    "comprador": "0xD51F23f0C922EF60299BdEDA6Abd44B063D2d1B2",
+    "usuarioExtra": "0x0457B733BDe142Aa4fe6fa156B54179b57A2CE11"
+  },
+  "contratos": {
+    "TokenImpactoCarbono": "0xc43E523187fF6a0B35662d6CD769Ef2E78435406",
+    "CreditoCarbonoToken": "0xD589A9b0E580E99c31F20255F5daeb52D9de46a0",
+    "CertificadoCompensacaoNFT": "0x66ba8C9a00BB2C2C1968Fe0dbBC0C947731104A3",
+    "RegistroOrganizacoes": "0x8c1315184e2bF65f9276ec38469Cbf077718F2eF",
+    "TesourariaCarbono": "0x357CBD09E682735C62CA0F671e590E196dE3C0d1",
+    "RegistroProjetosCarbono": "0x601799e9316EdA4B737EAf5DEBb090260ad707ce",
+    "ValidacaoProjetos": "0x0Fa33841c731F0F81a41a299E6B38bC8Bae34047",
+    "MercadoCarbono": "0xAafBfC81E735F7FC868A95bD9A390341E8EE2b80",
+    "RegistroAposentadorias": "0x03af95965103fFc636cca14Ec80214Cee13961BA",
+    "StakingCarbono": "0xcDbE632E6D807B1f45D3Fba564Ba22346654d975",
+    "GovernancaCarbono": "0x3263342aAF18769cc43CF52C933b0EA21B4505fE",
+    "MockPriceFeedChainlink": "0xa81eC17e78b91864e6C9CFa09abE92CF14feC9Cf",
+    "AdaptadorOraculoChainlink": "0xd6D902FD6b6A8EadF21D48e69f58D133BCbd12Be"
+  },
+  "explorador": {
+    "nome": "Sepolia Etherscan",
+    "urlBase": "https://sepolia.etherscan.io"
+  }
+}

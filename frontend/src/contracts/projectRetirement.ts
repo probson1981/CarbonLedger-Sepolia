@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+﻿import { ethers } from "ethers";
 import { obterRedeAtual } from "../config/redes";
 import { obterEnderecoContrato } from "../config/contratos";
 
@@ -100,7 +100,7 @@ function validarInteiroPositivo(
   const convertido = BigInt(valor);
 
   if (convertido <= 0n) {
-    throw new Error(`${nomeCampo} inválido.`);
+    throw new Error(`${nomeCampo} invÃ¡lido.`);
   }
 
   return convertido;
@@ -110,7 +110,7 @@ function validarTextoObrigatorio(valor: string, nomeCampo: string): string {
   const texto = valor.trim();
 
   if (!texto) {
-    throw new Error(`${nomeCampo} obrigatório.`);
+    throw new Error(`${nomeCampo} obrigatÃ³rio.`);
   }
 
   return texto;
@@ -141,22 +141,24 @@ function tratarErroAposentadoria(erro: unknown): Error {
     return erro;
   }
 
-  return new Error("Erro desconhecido na aposentadoria de créditos.");
+  return new Error("Erro desconhecido na aposentadoria de crÃ©ditos.");
 }
 
 async function obterProviderEChainId() {
   const ethereum = obterEthereum();
 
   if (!ethereum) {
-    throw new Error("MetaMask não encontrada no navegador.");
+    throw new Error("MetaMask nÃ£o encontrada no navegador.");
   }
 
   const rede = await obterRedeAtual();
   const chainIdAtual = String(rede.chainId);
 
-  if (chainIdAtual !== "31337") {
+  const redesPermitidas = ["31337", "11155111"];
+
+  if (!redesPermitidas.includes(chainIdAtual)) {
     throw new Error(
-      `Rede incorreta. Selecione Hardhat Localhost na MetaMask. Chain ID atual: ${chainIdAtual}`
+      `Rede incorreta. Selecione Hardhat Localhost ou Sepolia na MetaMask. Chain ID atual: ${chainIdAtual}`
     );
   }
 
@@ -287,7 +289,7 @@ function extrairEventoCreditosAposentados(params: {
   contratoRegistroAposentadorias: ethers.Contract;
 }): ResultadoAposentadoria {
   if (!params.receipt) {
-    throw new Error("Recibo da transação não disponível.");
+    throw new Error("Recibo da transaÃ§Ã£o nÃ£o disponÃ­vel.");
   }
 
   for (const log of params.receipt.logs) {
@@ -316,7 +318,7 @@ function extrairEventoCreditosAposentados(params: {
   }
 
   throw new Error(
-    "Não foi possível localizar o evento CreditosAposentados no recibo."
+    "NÃ£o foi possÃ­vel localizar o evento CreditosAposentados no recibo."
   );
 }
 
@@ -324,7 +326,7 @@ export async function obterContaAtualMetaMask(): Promise<string> {
   const ethereum = obterEthereum();
 
   if (!ethereum) {
-    throw new Error("MetaMask não encontrada no navegador.");
+    throw new Error("MetaMask nÃ£o encontrada no navegador.");
   }
 
   const contas = await ethereum.request({
@@ -372,7 +374,7 @@ export async function aposentarCreditosCarbono(params: {
     const motivo = validarTextoObrigatorio(params.motivo, "Motivo");
     const uriRelatorio = validarTextoObrigatorio(
       params.uriRelatorio,
-      "Relatório"
+      "RelatÃ³rio"
     );
     const uriCertificado = validarTextoObrigatorio(
       params.uriCertificado,

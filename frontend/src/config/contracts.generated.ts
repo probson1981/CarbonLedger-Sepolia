@@ -2,8 +2,12 @@
 // Arquivo gerado automaticamente.
 // Não edite manualmente.
 //
-// Para atualizar depois de um deploy local, rode:
+// Para atualizar depois de um deploy, rode:
 // node scripts/sync_frontend_deployments.cjs
+//
+// Também é possível sincronizar uma rede específica:
+// node scripts/sync_frontend_deployments.cjs localhost
+// node scripts/sync_frontend_deployments.cjs sepolia
 
 export const DEPLOYMENTS = {
   "31337": {
@@ -11,7 +15,15 @@ export const DEPLOYMENTS = {
     "networkName": "localhost",
     "chainId": "31337",
     "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-    "geradoEm": "2026-06-06T02:14:07.691Z",
+    "geradoEm": "2026-06-05T22:38:12.352Z",
+    "contas": {
+      "admin": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "proponente": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "validador1": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "validador2": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "comprador": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "usuarioExtra": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
+    },
     "contratos": {
       "TokenImpactoCarbono": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
       "CreditoCarbonoToken": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
@@ -27,6 +39,7 @@ export const DEPLOYMENTS = {
       "MockPriceFeedChainlink": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
       "AdaptadorOraculoChainlink": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0"
     },
+    "explorador": null,
     "TokenImpactoCarbono": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     "CreditoCarbonoToken": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
     "CertificadoCompensacaoNFT": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
@@ -40,6 +53,53 @@ export const DEPLOYMENTS = {
     "GovernancaCarbono": "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
     "MockPriceFeedChainlink": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
     "AdaptadorOraculoChainlink": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0"
+  },
+  "11155111": {
+    "projeto": "CarbonLedger",
+    "networkName": "sepolia",
+    "chainId": "11155111",
+    "deployer": "0x8F992da5D0Eec581145E31635Dc23cfc9e937851",
+    "geradoEm": "2026-06-07T00:05:00.787Z",
+    "contas": {
+      "admin": "0x05d670FdaF67Fb30c0EEf612b8fCC794E6C134d6",
+      "proponente": "0x4E2A7Ab294A740A9e25fFf3D777F7c5ac876a404",
+      "validador1": "0x5B4550d09803723Db82F5216C53Ec829B3E665b2",
+      "validador2": "0x88D2C2Da864801a74a8178B590131494B8BC61EB",
+      "comprador": "0xD51F23f0C922EF60299BdEDA6Abd44B063D2d1B2",
+      "usuarioExtra": "0x0457B733BDe142Aa4fe6fa156B54179b57A2CE11"
+    },
+    "contratos": {
+      "TokenImpactoCarbono": "0xc43E523187fF6a0B35662d6CD769Ef2E78435406",
+      "CreditoCarbonoToken": "0xD589A9b0E580E99c31F20255F5daeb52D9de46a0",
+      "CertificadoCompensacaoNFT": "0x66ba8C9a00BB2C2C1968Fe0dbBC0C947731104A3",
+      "RegistroOrganizacoes": "0x8c1315184e2bF65f9276ec38469Cbf077718F2eF",
+      "TesourariaCarbono": "0x357CBD09E682735C62CA0F671e590E196dE3C0d1",
+      "RegistroProjetosCarbono": "0x601799e9316EdA4B737EAf5DEBb090260ad707ce",
+      "ValidacaoProjetos": "0x0Fa33841c731F0F81a41a299E6B38bC8Bae34047",
+      "MercadoCarbono": "0xAafBfC81E735F7FC868A95bD9A390341E8EE2b80",
+      "RegistroAposentadorias": "0x03af95965103fFc636cca14Ec80214Cee13961BA",
+      "StakingCarbono": "0xcDbE632E6D807B1f45D3Fba564Ba22346654d975",
+      "GovernancaCarbono": "0x3263342aAF18769cc43CF52C933b0EA21B4505fE",
+      "MockPriceFeedChainlink": "0xa81eC17e78b91864e6C9CFa09abE92CF14feC9Cf",
+      "AdaptadorOraculoChainlink": "0xd6D902FD6b6A8EadF21D48e69f58D133BCbd12Be"
+    },
+    "explorador": {
+      "nome": "Sepolia Etherscan",
+      "urlBase": "https://sepolia.etherscan.io"
+    },
+    "TokenImpactoCarbono": "0xc43E523187fF6a0B35662d6CD769Ef2E78435406",
+    "CreditoCarbonoToken": "0xD589A9b0E580E99c31F20255F5daeb52D9de46a0",
+    "CertificadoCompensacaoNFT": "0x66ba8C9a00BB2C2C1968Fe0dbBC0C947731104A3",
+    "RegistroOrganizacoes": "0x8c1315184e2bF65f9276ec38469Cbf077718F2eF",
+    "TesourariaCarbono": "0x357CBD09E682735C62CA0F671e590E196dE3C0d1",
+    "RegistroProjetosCarbono": "0x601799e9316EdA4B737EAf5DEBb090260ad707ce",
+    "ValidacaoProjetos": "0x0Fa33841c731F0F81a41a299E6B38bC8Bae34047",
+    "MercadoCarbono": "0xAafBfC81E735F7FC868A95bD9A390341E8EE2b80",
+    "RegistroAposentadorias": "0x03af95965103fFc636cca14Ec80214Cee13961BA",
+    "StakingCarbono": "0xcDbE632E6D807B1f45D3Fba564Ba22346654d975",
+    "GovernancaCarbono": "0x3263342aAF18769cc43CF52C933b0EA21B4505fE",
+    "MockPriceFeedChainlink": "0xa81eC17e78b91864e6C9CFa09abE92CF14feC9Cf",
+    "AdaptadorOraculoChainlink": "0xd6D902FD6b6A8EadF21D48e69f58D133BCbd12Be"
   }
 } as const;
 

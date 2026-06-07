@@ -1,14 +1,11 @@
-/**
- * @file contratos.ts
- * @author Alanio Lima
- * @author Ednardo Peixoto
- * @author Patrício Alves
- *
- * @notice
- * Arquivo gerado automaticamente pelo script scripts/deploy_local.ts.
- */
+/* eslint-disable */
+// Arquivo gerado automaticamente.
+// Não edite manualmente.
+//
+// Para atualizar depois de um deploy, rode:
+// node scripts/sync_frontend_deployments.cjs
 
-import type { NomeRedeSuportada } from "./redes";
+export type NomeRedeSuportada = "localhost" | "sepolia";
 
 export interface EnderecosContratos {
   TokenImpactoCarbono: string;
@@ -52,19 +49,19 @@ export const ENDERECOS_CONTRATOS: Record<
   },
 
   sepolia: {
-    TokenImpactoCarbono: ENDERECO_NAO_CONFIGURADO,
-    CreditoCarbonoToken: ENDERECO_NAO_CONFIGURADO,
-    CertificadoCompensacaoNFT: ENDERECO_NAO_CONFIGURADO,
-    RegistroOrganizacoes: ENDERECO_NAO_CONFIGURADO,
-    TesourariaCarbono: ENDERECO_NAO_CONFIGURADO,
-    RegistroProjetosCarbono: ENDERECO_NAO_CONFIGURADO,
-    ValidacaoProjetos: ENDERECO_NAO_CONFIGURADO,
-    MercadoCarbono: ENDERECO_NAO_CONFIGURADO,
-    RegistroAposentadorias: ENDERECO_NAO_CONFIGURADO,
-    StakingCarbono: ENDERECO_NAO_CONFIGURADO,
-    GovernancaCarbono: ENDERECO_NAO_CONFIGURADO,
-    MockPriceFeedChainlink: ENDERECO_NAO_CONFIGURADO,
-    AdaptadorOraculoChainlink: ENDERECO_NAO_CONFIGURADO,
+    TokenImpactoCarbono: "0xc43E523187fF6a0B35662d6CD769Ef2E78435406",
+    CreditoCarbonoToken: "0xD589A9b0E580E99c31F20255F5daeb52D9de46a0",
+    CertificadoCompensacaoNFT: "0x66ba8C9a00BB2C2C1968Fe0dbBC0C947731104A3",
+    RegistroOrganizacoes: "0x8c1315184e2bF65f9276ec38469Cbf077718F2eF",
+    TesourariaCarbono: "0x357CBD09E682735C62CA0F671e590E196dE3C0d1",
+    RegistroProjetosCarbono: "0x601799e9316EdA4B737EAf5DEBb090260ad707ce",
+    ValidacaoProjetos: "0x0Fa33841c731F0F81a41a299E6B38bC8Bae34047",
+    MercadoCarbono: "0xAafBfC81E735F7FC868A95bD9A390341E8EE2b80",
+    RegistroAposentadorias: "0x03af95965103fFc636cca14Ec80214Cee13961BA",
+    StakingCarbono: "0xcDbE632E6D807B1f45D3Fba564Ba22346654d975",
+    GovernancaCarbono: "0x3263342aAF18769cc43CF52C933b0EA21B4505fE",
+    MockPriceFeedChainlink: "0xa81eC17e78b91864e6C9CFa09abE92CF14feC9Cf",
+    AdaptadorOraculoChainlink: "0xd6D902FD6b6A8EadF21D48e69f58D133BCbd12Be",
   },
 };
 
@@ -81,9 +78,7 @@ export function resolverNomeRede(
     return "sepolia";
   }
 
-  throw new Error(
-    `Rede não suportada pelo frontend: ${String(identificadorRede)}`
-  );
+  throw new Error(`Rede não suportada pelo frontend: ${String(identificadorRede)}`);
 }
 
 export function obterEnderecosContratos(
@@ -103,7 +98,7 @@ export function obterEnderecoContrato(
 
   if (!endereco || endereco === ENDERECO_NAO_CONFIGURADO) {
     throw new Error(
-      `Contrato ${nomeContrato} nao configurado para a rede ${nomeRede}`
+      `Contrato ${String(nomeContrato)} não configurado para a rede ${nomeRede}`
     );
   }
 

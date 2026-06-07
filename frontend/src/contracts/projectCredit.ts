@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+﻿import { ethers } from "ethers";
 import { obterRedeAtual } from "../config/redes";
 import { obterEnderecoContrato } from "../config/contratos";
 
@@ -64,14 +64,14 @@ function validarInteiroPositivo(
   const convertido = BigInt(valor);
 
   if (convertido <= 0n) {
-    throw new Error(`${nomeCampo} inválido.`);
+    throw new Error(`${nomeCampo} invÃ¡lido.`);
   }
 
   return convertido;
 }
 
 function tratarErroEmissao(erro: unknown): Error {
-  console.error("Erro bruto na emissão de créditos:", erro);
+  console.error("Erro bruto na emissÃ£o de crÃ©ditos:", erro);
 
   if (
     typeof erro === "object" &&
@@ -95,22 +95,24 @@ function tratarErroEmissao(erro: unknown): Error {
     return erro;
   }
 
-  return new Error("Erro desconhecido na emissão de créditos.");
+  return new Error("Erro desconhecido na emissÃ£o de crÃ©ditos.");
 }
 
 async function obterProviderEChainId() {
   const ethereum = obterEthereum();
 
   if (!ethereum) {
-    throw new Error("MetaMask não encontrada no navegador.");
+    throw new Error("MetaMask nÃ£o encontrada no navegador.");
   }
 
   const rede = await obterRedeAtual();
   const chainIdAtual = String(rede.chainId);
 
-  if (chainIdAtual !== "31337") {
+  const redesPermitidas = ["31337", "11155111"];
+
+  if (!redesPermitidas.includes(chainIdAtual)) {
     throw new Error(
-      `Rede incorreta. Selecione Hardhat Localhost na MetaMask. Chain ID atual: ${chainIdAtual}`
+      `Rede incorreta. Selecione Hardhat Localhost ou Sepolia na MetaMask. Chain ID atual: ${chainIdAtual}`
     );
   }
 
@@ -168,7 +170,7 @@ export async function obterContaAtualMetaMask(): Promise<string> {
   const ethereum = obterEthereum();
 
   if (!ethereum) {
-    throw new Error("MetaMask não encontrada no navegador.");
+    throw new Error("MetaMask nÃ£o encontrada no navegador.");
   }
 
   const contas = await ethereum.request({
@@ -228,7 +230,7 @@ export async function emitirCreditosProjetoAprovado(params: {
 
     const anoReferencia = validarInteiroPositivo(
       params.anoReferencia,
-      "Ano de referência"
+      "Ano de referÃªncia"
     );
 
     const { chainIdAtual } = await obterProviderEChainId();
@@ -247,7 +249,7 @@ export async function emitirCreditosProjetoAprovado(params: {
       anoReferencia
     );
 
-    console.log("Emissão de créditos enviada:", {
+    console.log("EmissÃ£o de crÃ©ditos enviada:", {
       idProjeto: idProjeto.toString(),
       idLote: idLote.toString(),
       anoReferencia: anoReferencia.toString(),
@@ -256,7 +258,7 @@ export async function emitirCreditosProjetoAprovado(params: {
 
     const receipt = await tx.wait();
 
-    console.log("Emissão de créditos confirmada:", {
+    console.log("EmissÃ£o de crÃ©ditos confirmada:", {
       idProjeto: idProjeto.toString(),
       idLote: idLote.toString(),
       anoReferencia: anoReferencia.toString(),

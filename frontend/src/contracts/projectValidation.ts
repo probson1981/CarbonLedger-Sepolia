@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+﻿import { ethers } from "ethers";
 import { obterRedeAtual } from "../config/redes";
 import { obterEnderecoContrato } from "../config/contratos";
 
@@ -41,11 +41,11 @@ export type ResultadoConsultaValidacao = {
 };
 
 export type StatusProjetoBlockchain =
-  | "Pendente de validação"
-  | "Em análise"
+  | "Pendente de validaÃ§Ã£o"
+  | "Em anÃ¡lise"
   | "Aprovado"
   | "Rejeitado"
-  | "Créditos emitidos"
+  | "CrÃ©ditos emitidos"
   | "Desconhecido";
 
 export type ResultadoEstadoProjetoBlockchain = {
@@ -96,7 +96,7 @@ function validarIdProjeto(idProjeto: string | number | bigint): bigint {
   const id = BigInt(idProjeto);
 
   if (id <= 0n) {
-    throw new Error("ID do projeto inválido.");
+    throw new Error("ID do projeto invÃ¡lido.");
   }
 
   return id;
@@ -108,7 +108,7 @@ function validarCreditosSugeridos(
   const creditos = BigInt(creditosSugeridos);
 
   if (creditos <= 0n) {
-    throw new Error("A quantidade de créditos sugeridos deve ser maior que zero.");
+    throw new Error("A quantidade de crÃ©ditos sugeridos deve ser maior que zero.");
   }
 
   return creditos;
@@ -120,7 +120,7 @@ function obterTimestampAtualSegundos(): number {
 
 function extrairMensagemErro(erro: unknown): string {
   if (typeof erro !== "object" || erro === null) {
-    return "Erro desconhecido na validação do projeto.";
+    return "Erro desconhecido na validaÃ§Ã£o do projeto.";
   }
 
   const erroObj = erro as {
@@ -156,34 +156,34 @@ function extrairMensagemErro(erro: unknown): string {
     return erroObj.message;
   }
 
-  return "Erro desconhecido na validação do projeto.";
+  return "Erro desconhecido na validaÃ§Ã£o do projeto.";
 }
 
 function tratarErroValidacao(erro: unknown): Error {
-  console.error("Erro bruto na validação do projeto:", erro);
+  console.error("Erro bruto na validaÃ§Ã£o do projeto:", erro);
 
   const mensagem = extrairMensagemErro(erro);
 
   if (mensagem.includes("Validador nao apto")) {
     return new Error(
-      "Validador não apto. Confira se a carteira conectada está cadastrada como validador ativo no contrato RegistroOrganizacoes."
+      "Validador nÃ£o apto. Confira se a carteira conectada estÃ¡ cadastrada como validador ativo no contrato RegistroOrganizacoes."
     );
   }
 
   if (mensagem.includes("Contrato nao autorizado")) {
     return new Error(
-      "Contrato de validação não autorizado no RegistroProjetosCarbono. Execute o setup local para autorizar o ValidacaoProjetos."
+      "Contrato de validaÃ§Ã£o nÃ£o autorizado no RegistroProjetosCarbono. Execute o setup local para autorizar o ValidacaoProjetos."
     );
   }
 
   if (mensagem.includes("Estado invalido")) {
     return new Error(
-      "Estado inválido do projeto. Para iniciar votação, o projeto precisa estar no estado Submetido."
+      "Estado invÃ¡lido do projeto. Para iniciar votaÃ§Ã£o, o projeto precisa estar no estado Submetido."
     );
   }
 
   if (mensagem.includes("Votacao ja iniciada")) {
-    return new Error("A votação deste projeto já foi iniciada.");
+    return new Error("A votaÃ§Ã£o deste projeto jÃ¡ foi iniciada.");
   }
 
   if (mensagem.includes("Projeto inexistente")) {
@@ -197,15 +197,17 @@ async function obterProviderEChainId() {
   const ethereum = obterEthereum();
 
   if (!ethereum) {
-    throw new Error("MetaMask não encontrada no navegador.");
+    throw new Error("MetaMask nÃ£o encontrada no navegador.");
   }
 
   const rede = await obterRedeAtual();
   const chainIdAtual = String(rede.chainId);
 
-  if (chainIdAtual !== "31337") {
+  const redesPermitidas = ["31337", "11155111"];
+
+  if (!redesPermitidas.includes(chainIdAtual)) {
     throw new Error(
-      `Rede incorreta. Selecione Hardhat Localhost na MetaMask. Chain ID atual: ${chainIdAtual}`
+      `Rede incorreta. Selecione Hardhat Localhost ou Sepolia na MetaMask. Chain ID atual: ${chainIdAtual}`
     );
   }
 
@@ -267,7 +269,7 @@ function sugerirStatusProjeto(params: {
   const { estadoCodigo, aprovado, emitido } = params;
 
   if (emitido || estadoCodigo === "5") {
-    return "Créditos emitidos";
+    return "CrÃ©ditos emitidos";
   }
 
   if (aprovado || estadoCodigo === "3") {
@@ -279,11 +281,11 @@ function sugerirStatusProjeto(params: {
   }
 
   if (estadoCodigo === "2") {
-    return "Em análise";
+    return "Em anÃ¡lise";
   }
 
   if (estadoCodigo === "1") {
-    return "Pendente de validação";
+    return "Pendente de validaÃ§Ã£o";
   }
 
   return "Desconhecido";
@@ -296,7 +298,7 @@ function descreverEstadoProjeto(estadoCodigo: string): string {
     case "1":
       return "Submetido";
     case "2":
-      return "Em votação";
+      return "Em votaÃ§Ã£o";
     case "3":
       return "Aprovado";
     case "4":
@@ -355,7 +357,7 @@ export async function obterContaAtualMetaMask(): Promise<string> {
   const ethereum = obterEthereum();
 
   if (!ethereum) {
-    throw new Error("MetaMask não encontrada no navegador.");
+    throw new Error("MetaMask nÃ£o encontrada no navegador.");
   }
 
   const contas = await ethereum.request({
@@ -467,9 +469,9 @@ export async function iniciarVotacaoProjeto(
 
     if (estadoProjeto.estadoCodigo !== "1") {
       throw new Error(
-        `Não é possível iniciar votação. Estado atual do projeto: ${descreverEstadoProjeto(
+        `NÃ£o Ã© possÃ­vel iniciar votaÃ§Ã£o. Estado atual do projeto: ${descreverEstadoProjeto(
           estadoProjeto.estadoCodigo
-        )} código ${estadoProjeto.estadoCodigo}. O estado necessário é Submetido código 1.`
+        )} cÃ³digo ${estadoProjeto.estadoCodigo}. O estado necessÃ¡rio Ã© Submetido cÃ³digo 1.`
       );
     }
 
@@ -480,7 +482,7 @@ export async function iniciarVotacaoProjeto(
 
     if (!apto) {
       throw new Error(
-        `Validador não apto para iniciar votação. Conta conectada: ${contaAtual}.`
+        `Validador nÃ£o apto para iniciar votaÃ§Ã£o. Conta conectada: ${contaAtual}.`
       );
     }
 
@@ -488,7 +490,7 @@ export async function iniciarVotacaoProjeto(
 
     const tx = await contrato.iniciarVotacao(id);
 
-    console.log("Votação iniciada:", {
+    console.log("VotaÃ§Ã£o iniciada:", {
       idProjeto: id.toString(),
       contaAtual,
       hash: tx.hash,
@@ -525,7 +527,7 @@ export async function votarProjetoValidacao(params: {
 
     if (!apto) {
       throw new Error(
-        `Validador não apto para votar. Conta conectada: ${contaAtual}.`
+        `Validador nÃ£o apto para votar. Conta conectada: ${contaAtual}.`
       );
     }
 
@@ -563,7 +565,7 @@ export async function encerrarVotacaoProjeto(
 
     const tx = await contrato.encerrarVotacao(id);
 
-    console.log("Votação encerrada:", {
+    console.log("VotaÃ§Ã£o encerrada:", {
       idProjeto: id.toString(),
       hash: tx.hash,
     });

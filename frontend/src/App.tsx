@@ -456,9 +456,11 @@ function App() {
         throw new Error("Não foi possível identificar a rede da carteira.");
       }
 
-      if (chainIdDecimal !== "31337") {
+      const redesPermitidas = ["31337", "11155111"];
+
+      if (!redesPermitidas.includes(chainIdDecimal)) {
         throw new Error(
-          `Rede incorreta. Selecione Hardhat Localhost. Chain ID atual: ${chainIdDecimal}`
+          `Rede incorreta. Selecione Hardhat Localhost ou Sepolia. Chain ID atual: ${chainIdDecimal}`
         );
       }
 
