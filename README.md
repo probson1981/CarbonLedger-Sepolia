@@ -265,430 +265,369 @@ cd ..
 
 ---
 
-## 13. Executar ambiente local
+## 13. Configuração do arquivo `.env`
 
-### Terminal 1: iniciar blockchain local
+O projeto usa variáveis de ambiente para configurar a rede Sepolia, a conta deployer e as contas públicas usadas nos papéis do MVP.
+
+Crie o arquivo `.env` a partir do exemplo:
 
 ```powershell
-npx hardhat node --hostname 127.0.0.1
+copy .env.example .env
 ```
 
-Esse terminal deve permanecer aberto.
+O arquivo `.env` deve ficar na raiz do projeto.
 
-### Terminal 2: compilar contratos
+Exemplo:
 
-```powershell
-npx hardhat compile
+```env
+SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+
+SEPOLIA_DEPLOYER_PRIVATE_KEY=0xCOLOQUE_A_PRIVATE_KEY_DO_DEPLOYER_AQUI
+
+ETHERSCAN_API_KEY=
+
+SEPOLIA_ADMIN_ADDRESS=0xEnderecoDoAdmin
+SEPOLIA_PROPONENTE_ADDRESS=0xEnderecoDoProponente
+SEPOLIA_VALIDADOR1_ADDRESS=0xEnderecoDoValidador1
+SEPOLIA_VALIDADOR2_ADDRESS=0xEnderecoDoValidador2
+SEPOLIA_COMPRADOR_ADDRESS=0xEnderecoDoComprador
+SEPOLIA_USUARIO_EXTRA_ADDRESS=0xEnderecoUsuarioExtra
+
+SEPOLIA_FUND_AMOUNT_ETH=0.05
+SEPOLIA_MIN_BALANCE_ETH=0.02
 ```
 
-### Gerar carteiras locais
+A variável `SEPOLIA_DEPLOYER_PRIVATE_KEY` deve conter a private key da conta que pagará o deploy, o setup, o financiamento das carteiras de teste e a transferência de ownership do contrato `CreditoCarbonoToken`.
+
+O arquivo `.env` não deve ser enviado ao GitHub.
+
+---
+
+## 14. Gerar carteiras de teste para Sepolia
+
+Para criar ou reaproveitar contas de teste para cada papel do MVP, rode:
 
 ```powershell
-npx hardhat run .\scripts\gerar_carteiras_locais.ts
+npx hardhat run .\scripts\gerar_carteiras_sepolia.ts
 ```
 
-### Financiar carteiras locais
+Esse script cria ou atualiza os seguintes arquivos locais:
 
-```powershell
-npx hardhat run .\scripts\financiar_carteiras_locais.ts --network localhost
+```text
+.sepolia-wallets.json
+.sepolia-metamask-import.txt
+.env
 ```
 
-### Fazer deploy dos contratos
+O arquivo `.sepolia-wallets.json` contém as contas geradas, incluindo endereços públicos e private keys.
 
-```powershell
-npx hardhat run .\scripts\deploy_local.ts --network localhost
+O arquivo `.sepolia-metamask-import.txt` contém instruções para importar as contas no MetaMask, com:
+
+```text
+papel no sistema
+nome sugerido para a conta no MetaMask
+endereço público
+private key
 ```
 
-### Configurar contratos
+Esse arquivo é aberto automaticamente ao final da execução do script.
 
-```powershell
-npx hardhat run .\scripts\setup_local.ts --network localhost
+Papéis gerados:
+
+```text
+admin
+proponente
+validador1
+validador2
+comprador
+usuarioExtra
 ```
 
-### Sincronizar contratos com o frontend
+O script também atualiza automaticamente no `.env` os endereços públicos das contas:
+
+```env
+SEPOLIA_ADMIN_ADDRESS=0x...
+SEPOLIA_PROPONENTE_ADDRESS=0x...
+SEPOLIA_VALIDADOR1_ADDRESS=0x...
+SEPOLIA_VALIDADOR2_ADDRESS=0x...
+SEPOLIA_COMPRADOR_ADDRESS=0x...
+SEPOLIA_USUARIO_EXTRA_ADDRESS=0x...
+```
+
+Por segurança, se o arquivo `.sepolia-wallets.json` já existir, o script reaproveita as carteiras existentes e não gera novas contas automaticamente.
+
+Para forçar a geração de um novo conjunto de carteiras, use:
 
 ```powershell
-node .\scripts\sync_frontend_deployments.cjs localhost
+npx hardhat run .\scripts\gerar_carteiras_sepolia.ts -- --force
+```
+
+Use `--force` com cuidado, pois isso gera novas contas, atualiza o `.env` e exige novo deploy para que os contratos reconheçam esses novos endereços.
+
+Os arquivos abaixo são sensíveis e não devem ser enviados ao GitHub:
+
+```text
+.env
+.sepolia-wallets.json
+.sepolia-metamask-import.txt
 ```
 
 ---
 
-## 14. Rodar o frontend
+## 15. Importar contas no MetaMask
 
-Entre na pasta do frontend:
+Após gerar as carteiras, abra o arquivo:
 
 ```powershell
-cd frontend
+notepad .\.sepolia-metamask-import.txt
 ```
 
-Faça o build:
+Esse arquivo mostra as contas que devem ser importadas no MetaMask.
+
+Para importar uma conta:
+
+```text
+1. Abra o MetaMask.
+2. Clique no seletor de contas.
+3. Escolha Adicionar conta ou carteira de hardware.
+4. Escolha Importar conta.
+5. Selecione o tipo Private Key.
+6. Copie a private key indicada no arquivo .sepolia-metamask-import.txt.
+7. Cole a private key no MetaMask.
+8. Clique em Importar.
+9. Renomeie a conta com o nome sugerido no arquivo.
+```
+
+Repita o processo para os papéis principais:
+
+```text
+CarbonLedger Admin
+CarbonLedger Proponente
+CarbonLedger Validador 1
+CarbonLedger Comprador
+```
+
+O Validador 2 e o Usuário Extra são úteis para testes adicionais.
+
+---
+
+## 16. Financiar as carteiras recém-geradas
+
+Após gerar as carteiras, financie as contas de teste com SepoliaETH:
 
 ```powershell
+npx hardhat run .\scripts\financiar_carteiras_sepolia.ts --network sepolia
+```
+
+Esse script lê diretamente o arquivo:
+
+```text
+.sepolia-wallets.json
+```
+
+e envia SepoliaETH da conta deployer para as carteiras geradas.
+
+O valor enviado e o saldo mínimo são controlados pelas variáveis:
+
+```env
+SEPOLIA_FUND_AMOUNT_ETH=0.05
+SEPOLIA_MIN_BALANCE_ETH=0.02
+```
+
+Se uma carteira já tiver saldo maior ou igual ao mínimo definido, o script não envia nova transferência.
+
+---
+
+## 17. Preparação completa da Sepolia
+
+Depois de gerar, importar e financiar as carteiras, rode o script mestre:
+
+```powershell
+node .\scripts\preparar_sepolia.cjs
+```
+
+Esse script executa automaticamente:
+
+```text
+1. Compilação dos contratos
+2. Deploy dos contratos na Sepolia
+3. Setup das permissões e parâmetros
+4. Verificação de funding das contas registradas no deployment
+5. Transferência do ownership do CreditoCarbonoToken para o Admin
+6. Sincronização dos contratos com o frontend
+7. Build do frontend
+```
+
+Internamente, ele executa:
+
+```powershell
+npx hardhat compile --force
+
+npx hardhat run .\scripts\deploy_sepolia.ts --network sepolia
+
+npx hardhat run .\scripts\setup_sepolia.ts --network sepolia
+
+npx hardhat run .\scripts\financiar_contas_sepolia.ts --network sepolia
+
+npx hardhat run .\scripts\transferir_ownership_credito_sepolia.ts --network sepolia
+
+node .\scripts\sync_frontend_deployments.cjs
+
+cd frontend
 npm run build
 ```
 
-Rode a aplicação:
+O script `financiar_contas_sepolia.ts` é uma checagem pós-deploy. Ele lê as contas em:
 
-```powershell
-npm run dev -- --force
+```text
+deployments\sepolia.json
 ```
 
-A aplicação será aberta normalmente em endereço semelhante a:
+e confirma se as contas oficialmente registradas no deployment possuem saldo mínimo.
+
+---
+
+## 18. Rodar o frontend
+
+Após a preparação da Sepolia, rode:
+
+```powershell
+cd frontend
+npm run dev
+```
+
+A aplicação ficará disponível em endereço semelhante a:
 
 ```text
 http://localhost:5173
 ```
 
----
-
-## 15. Configuração da MetaMask
-
-Adicione uma rede manual na MetaMask com os seguintes dados:
+No MetaMask:
 
 ```text
-Nome da rede: Hardhat Localhost
-RPC URL: http://127.0.0.1:8545
-Chain ID: 31337
-Símbolo: ETH
+1. Selecione a rede Sepolia.
+2. Selecione a conta correspondente ao papel usado no frontend.
+3. Conecte a conta ao site local.
+4. Clique em Sincronizar MetaMask dentro da aplicação.
 ```
 
-Importe as contas de teste usando as chaves privadas exibidas pelo Hardhat ao executar:
+---
+
+## 19. Fluxo recomendado para uma máquina nova
+
+Em uma máquina nova, após clonar o repositório:
 
 ```powershell
-npx hardhat node --hostname 127.0.0.1
+git clone https://github.com/probson1981/CarbonLedger-Sepolia.git
+cd CarbonLedger-Sepolia
+npm install
+cd frontend
+npm install
+cd ..
 ```
 
-Contas usadas com frequência no teste local:
+Crie o `.env`:
 
-```text
-Administrador:
-0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-
-Proponente:
-0x70997970C51812dc3A010C7d01b50e0d17dc79C8
-
-Validador 1:
-0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
-
-Validador 2:
-0x90F79bf6EB2c4f870365E785982E1f101E93b906
-
-Comprador:
-0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65
+```powershell
+copy .env.example .env
 ```
 
-Essas contas e chaves são apenas para ambiente local. Nunca devem ser usadas em redes reais.
-
----
-
-## 16. Usuários de demonstração
+Preencha no `.env`:
 
 ```text
-Administrador:
-usuário: admin
-senha: admin123
-
-Proponente 1:
-usuário: proponente1
-senha: prop123
-
-Proponente 2:
-usuário: proponente2
-senha: prop456
-
-Validador 1:
-usuário: validador1
-senha: val123
-
-Validador 2:
-usuário: validador2
-senha: val456
-
-Comprador 1:
-usuário: comprador1
-senha: comp123
-
-Comprador 2:
-usuário: comprador2
-senha: comp456
+SEPOLIA_RPC_URL
+SEPOLIA_DEPLOYER_PRIVATE_KEY
+ETHERSCAN_API_KEY, se for verificar contratos
 ```
 
-Ao trocar de usuário no frontend, também troque a conta ativa na MetaMask e clique em **Sincronizar MetaMask**.
+Depois rode:
 
----
-
-## 17. Teste funcional mínimo
-
-### 17.1 Cadastro do projeto
-
-Perfil:
-
-```text
-proponente1
-prop123
+```powershell
+npx hardhat run .\scripts\gerar_carteiras_sepolia.ts
 ```
 
-Conta MetaMask:
+Importe as contas no MetaMask usando o arquivo:
 
 ```text
-Proponente
+.sepolia-metamask-import.txt
 ```
 
-Passos:
+Financie as carteiras geradas:
 
-```text
-Submeter Projeto
-Novo projeto
-Enviar para validação
-Confirmar na MetaMask
+```powershell
+npx hardhat run .\scripts\financiar_carteiras_sepolia.ts --network sepolia
 ```
 
-Resultado esperado:
+Prepare a Sepolia:
 
-```text
-Projeto cadastrado na blockchain
-Projeto aparece na lista do proponente
+```powershell
+node .\scripts\preparar_sepolia.cjs
+```
+
+Rode o frontend:
+
+```powershell
+cd frontend
+npm run dev
 ```
 
 ---
 
-### 17.2 Validação
+## 20. Sequência de teste do MVP
 
-Perfil:
+A sequência mínima de teste é:
 
 ```text
-validador1
-val123
+1. Proponente cadastra projeto.
+2. Validador 1 inicia votação.
+3. Validador 1 vota.
+4. Validador 1 encerra votação.
+5. Admin emite créditos.
+6. Proponente cria oferta no marketplace.
+7. Comprador compra créditos.
+8. Comprador aposenta créditos.
+9. Sistema emite NFT de compensação.
 ```
 
-Conta MetaMask:
+Ao trocar de papel no frontend, também troque a conta ativa no MetaMask e clique em:
 
 ```text
-Validador 1
-```
-
-Passos:
-
-```text
-Validar projetos
-Sincronizar todos os projetos
-Selecionar projeto em análise
-Iniciar votação
-Confirmar na MetaMask
-Verificar aptidão
-Aprovar ou rejeitar
-Confirmar na MetaMask
-Aguardar prazo de votação
-Encerrar votação
-Confirmar na MetaMask
-```
-
-Resultado esperado:
-
-```text
-Votação criada
-Voto registrado
-Votação encerrada
-Projeto aprovado ou rejeitado
+Sincronizar MetaMask
 ```
 
 ---
 
-### 17.3 Emissão de créditos
+## 21. Scripts Sepolia principais
 
-Perfil:
+### `gerar_carteiras_sepolia.ts`
 
-```text
-admin
-admin123
-```
+Gera ou reaproveita carteiras de teste para os papéis do MVP.
 
-Conta MetaMask:
+Também atualiza o `.env` com os endereços públicos e gera o arquivo `.sepolia-metamask-import.txt`.
 
-```text
-Administrador
-```
+### `financiar_carteiras_sepolia.ts`
 
-Passos:
+Financia diretamente as carteiras existentes em `.sepolia-wallets.json`.
 
-```text
-Emissão de Créditos
-Selecionar projeto aprovado
-Consultar projeto
-Emitir créditos
-Confirmar na MetaMask
-```
+Uso recomendado logo depois de gerar as carteiras.
 
-Resultado esperado:
+### `preparar_sepolia.cjs`
 
-```text
-Créditos ERC-1155 emitidos
-Projeto passa para Créditos emitidos
-Proponente recebe saldo no lote
-```
+Script mestre que compila, faz deploy, configura contratos, verifica funding, transfere ownership, sincroniza o frontend e executa build.
 
----
+### `financiar_contas_sepolia.ts`
 
-### 17.4 Oferta no marketplace
+Lê as contas registradas em `deployments\sepolia.json` e garante que elas possuem saldo mínimo.
 
-Perfil:
+É executado dentro do script mestre como verificação pós-deploy.
+
+### `sync_frontend_deployments.cjs`
+
+Atualiza automaticamente:
 
 ```text
-proponente1
-prop123
+frontend\src\config\contracts.generated.ts
+frontend\src\config\contratos.ts
 ```
 
-Conta MetaMask:
-
-```text
-Proponente
-```
-
-Passos:
-
-```text
-Ofertar Créditos
-Selecionar projeto com créditos emitidos
-Consultar saldo e aprovação
-Aprovar marketplace
-Confirmar na MetaMask
-Criar oferta
-Confirmar na MetaMask
-```
-
-Resultado esperado:
-
-```text
-Oferta criada no marketplace
-```
-
----
-
-### 17.5 Compra dos créditos
-
-Perfil:
-
-```text
-comprador1
-comp123
-```
-
-Conta MetaMask:
-
-```text
-Comprador
-```
-
-Passos:
-
-```text
-Comprar créditos
-Atualizar ofertas disponíveis
-Selecionar oferta
-Calcular compra
-Comprar créditos
-Confirmar na MetaMask
-```
-
-Resultado esperado:
-
-```text
-Comprador recebe créditos ERC-1155
-Proponente recebe ETH local líquido
-Marketplace separa taxa
-```
-
----
-
-### 17.6 Aposentadoria e certificado
-
-Perfil:
-
-```text
-comprador1
-comp123
-```
-
-Conta MetaMask:
-
-```text
-Comprador
-```
-
-Passos:
-
-```text
-Aposentar Créditos
-Atualizar meus créditos
-Selecionar lote comprado
-Informar quantidade a aposentar
-Aposentar créditos e emitir NFT
-Confirmar na MetaMask
-Atualizar resumo completo
-```
-
-Resultado esperado:
-
-```text
-Créditos aposentados
-Saldo do comprador reduzido
-Certificado NFT emitido
-```
-
----
-
-## 18. Limitações do MVP
-
-O CarbonLedger, nesta versão, é um MVP acadêmico e experimental. As principais limitações são:
-
-* execução local em Hardhat, sem uso de rede pública real;
-* ETH usado apenas como ativo fictício de teste;
-* ausência de auditoria formal dos smart contracts;
-* ausência de integração com sistemas reais de certificação de carbono;
-* ausência de validação documental ambiental real;
-* ausência de oráculos ambientais reais para medições de emissões;
-* persistência parcial de alguns dados no navegador;
-* dependência de sincronização manual entre blockchain e frontend em alguns fluxos;
-* marketplace simplificado;
-* governança implementada em nível básico para demonstração;
-* staking simplificado para fins de MVP;
-* controle de identidade e permissões simplificado;
-* URIs IPFS usadas como referências simuladas;
-* ausência de integração com armazenamento descentralizado real no fluxo de teste;
-* ausência de tratamento completo para cenários de produção, escalabilidade e segurança.
-
----
-
-## 19. Trabalhos futuros
-
-Possíveis evoluções do projeto:
-
-* implantação em rede pública de testes, como Sepolia;
-* integração com IPFS real;
-* integração com oráculos ambientais;
-* melhoria do módulo de governança;
-* melhoria do módulo de staking;
-* auditoria dos contratos inteligentes;
-* integração com padrões reconhecidos de certificação de carbono;
-* painel analítico para rastreabilidade dos créditos;
-* melhoria da arquitetura do frontend;
-* indexação de eventos on-chain;
-* criação de API auxiliar para consulta histórica;
-* melhoria da experiência de usuário;
-* suporte a múltiplos validadores e quóruns mais complexos;
-* relatórios de compensação exportáveis;
-* melhoria da documentação técnica.
-
----
-
-## 20. Observações finais
-
-O CarbonLedger demonstra como a tecnologia blockchain pode ser aplicada à rastreabilidade de créditos de carbono, oferecendo maior transparência no registro, validação, emissão, negociação e aposentadoria de créditos ambientais.
-
-O projeto não pretende substituir, nesta fase, processos reais de certificação ambiental. Seu objetivo é demonstrar tecnicamente um fluxo Web3 mínimo para um mercado digital de créditos de carbono em ambiente controlado de hackathon.
-
----
-
-## 21. Licença
-
-Projeto desenvolvido para fins educacionais, experimentais e de demonstração no contexto do Hackathon Web 3.0 do IREDE.
+Assim, após cada deploy, o frontend passa a apontar para os contratos recém-implantados.
